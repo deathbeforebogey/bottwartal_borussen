@@ -1479,6 +1479,7 @@ h3 {
     border-radius: 8px;
     padding: 10px;
     background: rgba(5, 5, 5, 0.96);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
   }
 
   .site-header.is-open .site-nav {
@@ -1507,7 +1508,8 @@ h3 {
 
   .hero {
     min-height: auto;
-    padding-top: 130px;
+    padding-top: 112px;
+    padding-bottom: 28px;
   }
 
   .hero-backdrop img {
@@ -1520,6 +1522,10 @@ h3 {
   .match-card {
     align-self: auto;
     max-width: 520px;
+  }
+
+  .builder-section {
+    grid-template-columns: 1fr;
   }
 
   .feature-grid,
@@ -1541,13 +1547,118 @@ h3 {
 }
 
 @media (max-width: 640px) {
+  body::before {
+    background-size: 34px 34px;
+  }
+
+  h1 {
+    font-size: clamp(2.75rem, 16vw, 4.6rem);
+  }
+
+  h2 {
+    font-size: clamp(1.85rem, 10vw, 3.1rem);
+  }
+
+  .site-header,
+  .auth-header,
+  .members-header {
+    padding: 12px 14px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brand img {
+    width: 34px;
+    height: 34px;
+  }
+
   .brand span {
-    max-width: 154px;
+    max-width: 176px;
     line-height: 1.05;
+  }
+
+  .brand strong {
+    font-size: 0.92rem;
+  }
+
+  .brand small {
+    font-size: 0.62rem;
+  }
+
+  .menu-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .hero {
+    padding: 104px 14px 24px;
+  }
+
+  .hero-backdrop img {
+    right: -52vw;
+    top: 76px;
+    width: 138vw;
+    opacity: 0.22;
+  }
+
+  .hero-copyblock {
+    max-width: 100%;
+  }
+
+  .hero-lead {
+    margin-top: 16px;
+    font-size: 0.98rem;
   }
 
   .hero-actions {
     display: grid;
+    gap: 10px;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .match-card {
+    padding: 16px;
+  }
+
+  .match-teams strong {
+    font-size: clamp(1.55rem, 9vw, 2.4rem);
+  }
+
+  .ticker span {
+    padding: 8px 14px;
+    font-size: 1.15rem;
+  }
+
+  .section,
+  .builder-section,
+  .contact {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .section-title {
+    gap: 14px;
+  }
+
+  .fanclub-simple {
+    gap: 18px;
+  }
+
+  .fanclub-simple figure {
+    width: min(210px, 72vw);
+  }
+
+  .news-card {
+    min-height: auto;
+  }
+
+  .join-section .hero-actions {
+    max-width: 320px;
   }
 
   .match-card dl div,
@@ -1575,6 +1686,48 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .auth-header .button {
+    width: fit-content;
+  }
+
+  .auth-shell {
+    min-height: auto;
+    gap: 22px;
+    padding: 34px 14px;
+  }
+
+  .auth-hero-brand {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .auth-hero-brand h1 {
+    font-size: clamp(2.25rem, 12vw, 3.4rem);
+  }
+
+  .auth-hero-brand p {
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+  }
+
+  .auth-panel {
+    padding: 18px;
+  }
+
+  .auth-panel h1 {
+    font-size: clamp(2.5rem, 14vw, 4rem);
+  }
+
+  .members-main,
+  .admin-main {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .admin-row button {
+    width: 100%;
+  }
+
   .admin-list {
     grid-column: auto;
   }
@@ -1585,5 +1738,50 @@ h3 {
 
   .route-board div {
     min-height: 190px;
+  }
+}
+
+@media (max-width: 430px) {
+  .brand span {
+    max-width: 142px;
+  }
+
+  .brand strong {
+    font-size: 0.8rem;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .site-nav {
+    left: 10px;
+    right: 10px;
+  }
+
+  .hero {
+    padding-top: 92px;
+  }
+
+  .hero-actions {
+    width: 100%;
+  }
+
+  .member-gate,
+  .news-card,
+  .member-box,
+  .admin-form,
+  .auth-panel {
+    border-radius: 6px;
+  }
+
+  .auth-header {
+    align-items: center;
+  }
+
+  .auth-header .button {
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 0.84rem;
   }
 }
