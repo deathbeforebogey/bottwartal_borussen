@@ -671,7 +671,7 @@ const serveStatic = async (request, response, pathname) => {
       return;
     }
 
-    send(response, 302, "", { Location: "/login.html" });
+    send(response, 302, "", { Location: `/login.html?next=${encodeURIComponent(requestedPath)}` });
     return;
   }
 
