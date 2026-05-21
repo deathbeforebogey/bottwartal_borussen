@@ -1416,6 +1416,57 @@ h3 {
   color: var(--yellow);
 }
 
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: flex-end;
+}
+
+.legal-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 78% 14%, rgba(255, 225, 0, 0.14), transparent 28%),
+    var(--black);
+}
+
+.legal-main {
+  max-width: 980px;
+  padding: clamp(42px, 7vw, 88px) clamp(18px, 4vw, 48px);
+}
+
+.legal-main h1 {
+  color: var(--yellow);
+  font-size: clamp(3rem, 8vw, 7rem);
+}
+
+.legal-card {
+  margin-top: 18px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.legal-card h2 {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 950;
+  line-height: 1.25;
+  text-transform: none;
+}
+
+.legal-card p {
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 700;
+}
+
+.legal-card a {
+  color: var(--yellow);
+  font-weight: 950;
+}
+
 .reveal {
   opacity: 0;
   transform: translateY(24px);
