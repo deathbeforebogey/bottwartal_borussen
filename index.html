@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Bottwartal Borussen - der schwarzgelbe BVB Fanclub aus dem Bottwartal. Termine, Fahrten, Spieltage und Kontakt."
+    />
+    <title>Bottwartal Borussen | BVB Fanclub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header" data-header>
+      <a class="brand" href="#start" aria-label="Bottwartal Borussen Startseite">
+        <img src="assets/fanclub-logo.jpeg" alt="" />
+        <span>
+          <strong>Bottwartal Borussen</strong>
+          <small>Offizieller BVB-Fanclub</small>
+        </span>
+      </a>
+
+      <button class="menu-button" type="button" data-menu-button aria-label="Navigation öffnen">
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="site-nav" data-nav aria-label="Hauptnavigation">
+        <a href="#fanclub">Fanclub</a>
+        <a href="#termine">Termine</a>
+        <a href="#aktuelles">Aktuelles</a>
+        <a href="#mitglied">Mitglied werden</a>
+        <a class="nav-icon-link" href="/admin.html" aria-label="Admin Login" title="Admin Login">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 12.25a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z" />
+            <path d="M4.25 20.25c.74-3.45 3.75-5.75 7.75-5.75s7.01 2.3 7.75 5.75" />
+          </svg>
+        </a>
+        <a class="nav-cta" href="#mitglied">Kontakt</a>
+      </nav>
+    </header>
+
+    <main id="start">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-backdrop" aria-hidden="true">
+          <div class="stadium-lines"></div>
+          <img src="assets/fanclub-logo.jpeg" alt="" />
+        </div>
+
+        <div class="hero-copyblock reveal">
+          <p class="eyebrow" data-content-key="hero_eyebrow">Offiziell schwarzgelb im Bottwartal</p>
+          <h1 id="hero-title">
+            <span data-content-key="hero_title_top">Bottwartal</span>
+            <span data-content-key="hero_title_bottom">Borussen</span>
+          </h1>
+          <p class="hero-lead" data-content-key="hero_lead">
+            Eine Fanclub-Seite mit Spieltagsenergie: Treffpunkte, Termine, Fahrten,
+            Gemeinschaft und alles, was den schwarzgelben Puls höher schlagen lässt.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#termine">Termine ansehen</a>
+            <a class="button ghost" href="#fanclub">Fanclub entdecken</a>
+          </div>
+        </div>
+
+        <aside class="match-card reveal" aria-live="polite" aria-label="Nächstes BVB-Spiel">
+          <p>Nächstes BVB-Spiel</p>
+          <div class="match-teams">
+            <strong data-next-home>BVB</strong>
+            <span>vs</span>
+            <strong data-next-away>lädt...</strong>
+          </div>
+          <span class="match-competition" data-next-competition>Bundesliga-Spielplan wird geladen</span>
+          <dl>
+            <div>
+              <dt>Datum</dt>
+              <dd data-next-date>--</dd>
+            </div>
+            <div>
+              <dt>Anstoß</dt>
+              <dd data-next-time>--</dd>
+            </div>
+            <div>
+              <dt>Countdown</dt>
+              <dd data-next-countdown>--</dd>
+            </div>
+          </dl>
+          <small data-next-source>Quelle: OpenLigaDB</small>
+        </aside>
+      </section>
+
+      <div class="ticker" aria-label="Fanclub Schlagworte">
+        <div class="ticker-track">
+          <span>Heimspiel</span>
+          <span>Auswärtsfahrt</span>
+          <span>Bottwartal</span>
+          <span>BVB 09</span>
+          <span>Fanclub</span>
+          <span>Schwarzgelb</span>
+          <span>Heimspiel</span>
+          <span>Auswärtsfahrt</span>
+          <span>Bottwartal</span>
+          <span>BVB 09</span>
+          <span>Fanclub</span>
+          <span>Schwarzgelb</span>
+        </div>
+      </div>
+
+      <div class="sitebuilder-sections" data-site-sections></div>
+
+      <section class="section fanclub" id="fanclub">
+        <div class="fanclub-simple reveal">
+          <figure>
+            <img src="assets/fanclub-logo.jpeg" alt="Logo der Bottwartal Borussen" />
+          </figure>
+          <div>
+            <p class="eyebrow">Fanclub</p>
+            <h2 data-content-key="fanclub_title">Bottwartal Borussen</h2>
+            <p>
+              Wir sind ein kleiner offizieller BVB-Fanclub aus dem Bottwartal. Diese Seite sammelt
+              die wichtigsten Informationen rund um unseren Fanclub, den Mitgliederbereich und
+              kommende schwarzgelbe Themen.
+            </p>
+            <div class="fact-list" aria-label="Fanclub Kurzinfos">
+              <span>Offizieller BVB-Fanclub</span>
+              <span>Bottwartal</span>
+              <span>BVB 09</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section schedule" id="termine">
+        <div class="section-title reveal">
+          <div>
+            <p class="eyebrow dark">Mitgliederbereich</p>
+            <h2>Termine nur für Mitglieder.</h2>
+          </div>
+          <p>
+            Fanclub-Termine, interne Treffen und Fahrten werden erst nach dem Login angezeigt.
+            Öffentliche Spieltagsinfos bleiben im Ticker oben sichtbar.
+          </p>
+        </div>
+
+        <div class="member-gate reveal">
+          <div>
+            <span>Geschützter Bereich</span>
+            <strong>Login für Mitglieder</strong>
+            <p>
+              Interne Termine, Fahrten und Fanclub-Infos sind im Members-Bereich erreichbar.
+            </p>
+          </div>
+          <a class="button dark" href="/login.html">Zum Login</a>
+        </div>
+      </section>
+
+      <section class="section news-section" id="aktuelles">
+        <div class="section-title reveal">
+          <div>
+            <p class="eyebrow">Aktuelles</p>
+            <h2>Neues aus dem Fanclub.</h2>
+          </div>
+          <p>
+            Kurze Meldungen, Hinweise und Updates für alle, die wissen wollen, was bei den
+            Bottwartal Borussen gerade ansteht.
+          </p>
+        </div>
+        <div class="news-grid">
+          <article class="news-card reveal">
+            <time datetime="2026-06-14">14. Juni</time>
+            <h3>Fanclub-Update</h3>
+            <p>Neue Informationen rund um den Aufbau unseres kleinen offiziellen BVB-Fanclubs.</p>
+          </article>
+          <article class="news-card reveal">
+            <time datetime="2026-07-05">05. Juli</time>
+            <h3>Saisonplanung</h3>
+            <p>Wir besprechen Kartenwünsche, Treffpunkte, Fahrten und Fanclub-Aktionen.</p>
+          </article>
+          <article class="news-card reveal">
+            <time datetime="2026-08-15">August</time>
+            <h3>Saisonauftakt</h3>
+            <p>Gemeinsam in die neue Saison mit Spieltagsrunde, Tippspiel und schwarzgelbem Abend.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section join-section" id="mitglied">
+        <div class="join-panel reveal">
+          <p class="eyebrow dark">Mitglied werden</p>
+          <h2>Du willst nicht nur zuschauen?</h2>
+          <p>
+            Dann werde Teil der Bottwartal Borussen. Schreib uns kurz oder melde dich für den
+            Mitgliederbereich an.
+          </p>
+          <div class="join-contact">
+            <span>Kontakt</span>
+            <a href="mailto:info@bottwartal-borussen.de">info@bottwartal-borussen.de</a>
+          </div>
+          <div class="hero-actions">
+            <a class="button dark" href="mailto:info@bottwartal-borussen.de">Kontakt aufnehmen</a>
+            <a class="button ghost dark-ghost" href="/login.html">Mitgliederlogin</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>© 2026 Bottwartal Borussen</span>
+      <a href="#start">Zurück nach oben</a>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

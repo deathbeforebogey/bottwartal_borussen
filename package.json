@@ -1,0 +1,17 @@
+{
+  "name": "bottwartal-borussen",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "make-first-user-admin": "node scripts/make-first-user-admin.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.106.0"
+  }
+}

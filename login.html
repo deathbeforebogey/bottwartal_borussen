@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mitglieder Login | Bottwartal Borussen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="auth-page">
+    <header class="auth-header">
+      <a class="brand" href="/">
+        <img src="assets/fanclub-logo.jpeg" alt="" />
+        <span>
+          <strong>Bottwartal Borussen</strong>
+          <small>Offizieller BVB-Fanclub</small>
+        </span>
+      </a>
+      <a class="button ghost" href="/">Zur Startseite</a>
+    </header>
+
+    <main class="auth-shell">
+      <section class="auth-hero-brand" aria-label="Bottwartal Borussen">
+        <img src="assets/fanclub-logo.jpeg" alt="Logo der Bottwartal Borussen" />
+        <div>
+          <p>Offizieller BVB-Fanclub</p>
+          <h1>Bottwartal Borussen</h1>
+        </div>
+      </section>
+
+      <section class="auth-panel">
+        <p class="eyebrow">Members only</p>
+        <h1>Login</h1>
+        <p>
+          Melde dich mit deinem Mitgliedskonto an. Danach kommst du in den geschützten Bereich
+          mit internen Terminen und Fanclub-Infos.
+        </p>
+
+        <form class="auth-form" data-login-form>
+          <label for="email">E-Mail</label>
+          <input id="email" name="email" type="email" autocomplete="email" required />
+
+          <label for="password">Passwort</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+
+          <button class="button primary" type="submit">Einloggen</button>
+          <p class="auth-message" data-auth-message></p>
+        </form>
+      </section>
+    </main>
+
+    <script src="auth.js"></script>
+  </body>
+</html>

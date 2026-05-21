@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin | Bottwartal Borussen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="admin-page">
+    <header class="members-header">
+      <a class="brand" href="/">
+        <img src="assets/fanclub-logo.jpeg" alt="" />
+        <span>Bottwartal Borussen</span>
+      </a>
+      <nav class="admin-tabs" aria-label="Admin Bereiche">
+        <a href="#builder">Builder</a>
+        <a href="#texte">Texte</a>
+        <a href="#artikel">Artikel</a>
+        <a href="#termine">Termine</a>
+        <a href="#mitglieder">Mitglieder</a>
+      </nav>
+      <button class="button dark" type="button" data-admin-logout>Ausloggen</button>
+    </header>
+
+    <main class="admin-main">
+      <section class="members-hero">
+        <p class="eyebrow">Admin Dashboard</p>
+        <h1>Verwalten</h1>
+        <p data-admin-status>Adminbereich wird geladen.</p>
+      </section>
+
+      <section class="admin-section" id="builder">
+        <div>
+          <h2>Builder</h2>
+          <p>Startseiten-Blöcke anlegen, bearbeiten, sortieren und ausblenden.</p>
+        </div>
+        <form class="admin-form" data-section-form>
+          <input type="hidden" name="id" />
+          <label>Reihenfolge<input name="sort_order" type="number" value="100" required /></label>
+          <label>Block-Typ
+            <select name="type">
+              <option value="highlight">Highlight</option>
+              <option value="split">Split</option>
+              <option value="compact">Kompakt</option>
+            </select>
+          </label>
+          <label>Eyebrow<input name="eyebrow" placeholder="z. B. Fanclub" /></label>
+          <label>Titel<input name="title" required /></label>
+          <label>Text<textarea name="body" rows="5"></textarea></label>
+          <label>Button Text<input name="button_label" placeholder="Mehr erfahren" /></label>
+          <label>Button Link<input name="button_url" placeholder="#kontakt oder https://..." /></label>
+          <label class="check-row"><input name="visible" type="checkbox" checked /> Sichtbar</label>
+          <button class="button primary" type="submit">Block speichern</button>
+          <button class="button ghost" type="button" data-section-reset>Neu</button>
+        </form>
+        <div class="admin-list" data-sections-list></div>
+      </section>
+
+      <section class="admin-section" id="texte">
+        <div>
+          <h2>Texte</h2>
+          <p>Ändert die wichtigsten Inhalte der Startseite ohne Code.</p>
+        </div>
+        <form class="admin-form" data-content-form></form>
+      </section>
+
+      <section class="admin-section" id="artikel">
+        <div>
+          <h2>Artikel</h2>
+          <p>News und Beiträge erstellen, bearbeiten oder entfernen.</p>
+        </div>
+        <form class="admin-form" data-article-form>
+          <input type="hidden" name="id" />
+          <label>Titel<input name="title" required /></label>
+          <label>Kurztext<input name="excerpt" required /></label>
+          <label>Artikeltext<textarea name="body" rows="5" required></textarea></label>
+          <label class="check-row"><input name="published" type="checkbox" checked /> Veröffentlicht</label>
+          <button class="button primary" type="submit">Artikel speichern</button>
+          <button class="button ghost" type="button" data-article-reset>Neu</button>
+        </form>
+        <div class="admin-list" data-articles-list></div>
+      </section>
+
+      <section class="admin-section" id="termine">
+        <div>
+          <h2>Termine</h2>
+          <p>Interne Mitglieder-Termine pflegen.</p>
+        </div>
+        <form class="admin-form" data-event-form>
+          <input type="hidden" name="id" />
+          <label>Datum<input name="event_date" type="date" required /></label>
+          <label>Tag<input name="day" placeholder="14" required /></label>
+          <label>Monat<input name="month" placeholder="Juni" required /></label>
+          <label>Uhrzeit<input name="event_time" placeholder="19:09 Uhr" required /></label>
+          <label>Titel<input name="title" required /></label>
+          <label>Beschreibung<textarea name="description" rows="3" required></textarea></label>
+          <button class="button primary" type="submit">Termin speichern</button>
+          <button class="button ghost" type="button" data-event-reset>Neu</button>
+        </form>
+        <div class="admin-list" data-events-list></div>
+      </section>
+
+      <section class="admin-section" id="mitglieder">
+        <div>
+          <h2>Mitglieder</h2>
+          <p>Supabase-Auth-User anlegen, Rollen ändern, Passwort zurücksetzen oder löschen.</p>
+        </div>
+        <form class="admin-form" data-user-form>
+          <input type="hidden" name="id" />
+          <label>E-Mail<input name="email" type="email" required /></label>
+          <label>Anzeigename<input name="displayName" /></label>
+          <label>Neues Passwort<input name="password" type="password" minlength="6" /></label>
+          <label>Rolle
+            <select name="role">
+              <option value="member">Mitglied</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+          <button class="button primary" type="submit">Mitglied speichern</button>
+          <button class="button ghost" type="button" data-user-reset>Neu</button>
+        </form>
+        <div class="admin-list" data-users-list></div>
+      </section>
+    </main>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

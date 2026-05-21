@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Members | Bottwartal Borussen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="members-page">
+    <header class="members-header">
+      <a class="brand" href="/">
+        <img src="assets/fanclub-logo.jpeg" alt="" />
+        <span>Bottwartal Borussen</span>
+      </a>
+      <div class="members-actions">
+        <a class="button primary" href="/admin.html" data-admin-link hidden>Admin Dashboard</a>
+        <button class="button dark" type="button" data-logout>Ausloggen</button>
+      </div>
+    </header>
+
+    <main class="members-main">
+      <section class="members-hero">
+        <p class="eyebrow">Mitgliederbereich</p>
+        <h1>Members</h1>
+        <p data-member-welcome>Interne Fanclub-Infos werden geladen.</p>
+      </section>
+
+      <section class="members-grid">
+        <article class="member-box">
+          <span>01</span>
+          <h2>Interne Termine</h2>
+          <p class="member-status" data-member-terms-status>Termine werden geladen.</p>
+          <div class="schedule-list member-schedule" data-member-terms></div>
+        </article>
+
+        <article class="member-box">
+          <span>02</span>
+          <h2>Tippspiel</h2>
+          <p>
+            Unser Kicktipp-Tippspiel für die Bottwartal Borussen. Der Link öffnet Kicktipp in
+            einem neuen Tab.
+          </p>
+          <a class="member-link" href="https://www.kicktipp.de/bottwartal-borussen" target="_blank" rel="noopener">
+            Zu Kicktipp
+          </a>
+        </article>
+      </section>
+    </main>
+
+    <script src="members.js"></script>
+  </body>
+</html>
