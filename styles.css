@@ -1267,7 +1267,7 @@ h3 {
   border-radius: 8px;
   background:
     linear-gradient(0deg, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.28)),
-    url("assets/fanclub-logo.jpeg") center / cover;
+    url("/assets/fanclub-logo.jpeg") center / cover;
   box-shadow: var(--shadow);
 }
 
