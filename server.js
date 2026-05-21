@@ -578,20 +578,29 @@ const handleApi = async (request, response, pathname) => {
   }
 
   if (pathname === "/api/login" && request.method === "POST") {
-    const body = await readJsonBody(request);
-    const email = String(body.email || body.username || "").trim();
-    const password = String(body.password || "");
-    const supabase = createSupabaseClient();
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    try {
+      const body = await readJsonBody(request);
+      const email = String(body.email || body.username || "").trim();
+      const password = String(body.password || "");
+      const supabase = createSupabaseClient();
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error || !data.session) {
-      sendJson(response, 401, { error: "Ungültige Login-Daten" });
+      if (error || !data.session) {
+        sendJson(response, 401, { error: "Ungültige Login-Daten" });
+        return true;
+      }
+
+      setAuthCookies(response, data.session);
+      sendJson(response, 200, { authenticated: true });
+      return true;
+    } catch (error) {
+      console.error("Login error:", error);
+      sendJson(response, 500, {
+        error:
+          "Login-Serverfehler. Bitte Supabase Environment Variables beim Hosting prüfen.",
+      });
       return true;
     }
-
-    setAuthCookies(response, data.session);
-    sendJson(response, 200, { authenticated: true });
-    return true;
   }
 
   if (pathname === "/api/logout" && request.method === "POST") {
@@ -685,6 +694,7 @@ const server = http.createServer(async (request, response) => {
       await serveStatic(request, response, pathname);
     }
   } catch (error) {
+    console.error("Server error:", error);
     sendJson(response, 500, { error: "Serverfehler" });
   }
 });
