@@ -15,6 +15,24 @@ const nextMatchElements = {
 
 const BVB_TEAM_ID = 7;
 const OPENLIGADB_BASE_URL = "https://api.openligadb.de";
+const KNOWN_BVB_MATCHES = [
+  {
+    matchDateTime: "2026-08-15T17:30:00+02:00",
+    leagueName: "Saisoneröffnung",
+    group: { groupName: "Testspiel" },
+    team1: { shortName: "BVB" },
+    team2: { shortName: "AS Rom" },
+    source: "BVB-Spielplan",
+  },
+  {
+    matchDateTime: "2026-08-22T20:30:00+02:00",
+    leagueName: "Franz-Beckenbauer-Supercup",
+    group: { groupName: "Finale" },
+    team1: { shortName: "BVB" },
+    team2: { shortName: "FC Bayern" },
+    source: "DFL",
+  },
+];
 
 const updateHeader = () => {
   header.classList.toggle("is-scrolled", window.scrollY > 12);
@@ -90,8 +108,15 @@ const formatCountdown = (date) => {
 
 const getTeamName = (team) => team?.shortName || team?.teamName || "offen";
 
+const getMatchDate = (match) => {
+  const dateValue = match.matchDateTime || match.matchDate;
+  const date = new Date(dateValue);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 const renderNextMatch = (match) => {
-  const kickoff = new Date(match.matchDateTime);
+  const kickoff = getMatchDate(match);
   const homeName = getTeamName(match.team1);
   const awayName = getTeamName(match.team2);
 
@@ -99,9 +124,11 @@ const renderNextMatch = (match) => {
   nextMatchElements.away.textContent = awayName;
   nextMatchElements.competition.textContent = `${match.leagueName} · ${match.group?.groupName || "Spieltag"}`;
   nextMatchElements.date.textContent = formatDate(kickoff);
-  nextMatchElements.time.textContent = `${formatTime(kickoff)} Uhr`;
+  nextMatchElements.time.textContent = match.matchDateTime ? `${formatTime(kickoff)} Uhr` : "offen";
   nextMatchElements.countdown.textContent = formatCountdown(kickoff);
-  nextMatchElements.source.textContent = "Automatisch aktualisiert über OpenLigaDB";
+  nextMatchElements.source.textContent = match.source
+    ? `Termin laut ${match.source}; Bundesliga automatisch über OpenLigaDB`
+    : "Automatisch aktualisiert über OpenLigaDB";
 };
 
 const renderNoMatch = () => {
@@ -129,15 +156,19 @@ const loadNextBvbMatch = async () => {
           }
 
           return response.json();
-        })
+        }).catch(() => [])
       )
     );
 
     const now = Date.now();
-    const nextMatch = seasonResponses
-      .flat()
-      .filter((match) => match.team1?.teamId === BVB_TEAM_ID || match.team2?.teamId === BVB_TEAM_ID)
-      .map((match) => ({ ...match, kickoff: new Date(match.matchDateTime).getTime() }))
+    const nextMatch = [...seasonResponses.flat(), ...KNOWN_BVB_MATCHES]
+      .filter(
+        (match) =>
+          match.source ||
+          match.team1?.teamId === BVB_TEAM_ID ||
+          match.team2?.teamId === BVB_TEAM_ID
+      )
+      .map((match) => ({ ...match, kickoff: getMatchDate(match)?.getTime() }))
       .filter((match) => Number.isFinite(match.kickoff) && match.kickoff > now)
       .sort((a, b) => a.kickoff - b.kickoff)[0];
 
