@@ -1,7 +1,6 @@
 const header = document.querySelector("[data-header]");
 const menuButton = document.querySelector("[data-menu-button]");
 const nav = document.querySelector("[data-nav]");
-const revealItems = document.querySelectorAll(".reveal");
 const siteSections = document.querySelector("[data-site-sections]");
 const nextMatchElements = {
   home: document.querySelector("[data-next-home]"),
@@ -38,35 +37,28 @@ const updateHeader = () => {
   header.classList.toggle("is-scrolled", window.scrollY > 12);
 };
 
-menuButton.addEventListener("click", () => {
-  const isOpen = header.classList.toggle("is-open");
+const setMenuOpen = (isOpen) => {
+  header.classList.toggle("is-open", isOpen);
+  menuButton.setAttribute("aria-expanded", String(isOpen));
   menuButton.setAttribute("aria-label", isOpen ? "Navigation schließen" : "Navigation öffnen");
-});
+};
 
+menuButton.addEventListener("click", () => {
+  setMenuOpen(!header.classList.contains("is-open"));
+});
 nav.addEventListener("click", (event) => {
-  if (event.target.closest("a")) {
-    header.classList.remove("is-open");
-    menuButton.setAttribute("aria-label", "Navigation öffnen");
+  if (event.target.closest("a")) setMenuOpen(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && header.classList.contains("is-open")) {
+    setMenuOpen(false);
+    menuButton.focus();
   }
 });
-
-if ("IntersectionObserver" in window) {
-  const revealObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          revealObserver.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.16 }
-  );
-
-  revealItems.forEach((item) => revealObserver.observe(item));
-} else {
-  revealItems.forEach((item) => item.classList.add("is-visible"));
-}
+document.addEventListener("click", (event) => {
+  if (!header.contains(event.target)) setMenuOpen(false);
+});
+window.matchMedia("(min-width: 921px)").addEventListener("change", () => setMenuOpen(false));
 
 const getBundesligaSeason = (date = new Date()) => {
   const year = date.getFullYear();
@@ -150,18 +142,18 @@ const loadNextBvbMatch = async () => {
   try {
     const seasonResponses = await Promise.all(
       seasonsToCheck.map((seasonYear) =>
-        fetch(`${OPENLIGADB_BASE_URL}/getmatchdata/bl1/${seasonYear}`).then((response) => {
+        fetch(`${OPENLIGADB_BASE_URL}/getmatchdata/bl1/${seasonYear}`, { signal: AbortSignal.timeout(8000) }).then((response) => {
           if (!response.ok) {
             throw new Error(`OpenLigaDB ${seasonYear}: ${response.status}`);
           }
 
           return response.json();
-        }).catch(() => [])
+        }).catch(() => null)
       )
     );
 
     const now = Date.now();
-    const nextMatch = [...seasonResponses.flat(), ...KNOWN_BVB_MATCHES]
+    const nextMatch = [...seasonResponses.filter(Boolean).flat(), ...KNOWN_BVB_MATCHES]
       .filter(
         (match) =>
           match.source ||
@@ -176,6 +168,10 @@ const loadNextBvbMatch = async () => {
       renderNextMatch(nextMatch);
     } else {
       renderNoMatch();
+      if (seasonResponses.every((result) => result === null)) {
+        nextMatchElements.competition.textContent = "Spielplan gerade nicht erreichbar";
+        nextMatchElements.source.textContent = "Bitte lade die Seite später erneut, um das nächste Spiel zu sehen.";
+      }
     }
   } catch (error) {
     renderNoMatch();

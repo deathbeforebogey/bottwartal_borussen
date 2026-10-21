@@ -13,6 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="design.css" />
   </head>
   <body class="auth-page">
     <header class="auth-header">
@@ -31,16 +32,16 @@
         <img src="/assets/fanclub-logo.jpeg" alt="Logo der Bottwartal Borussen" />
         <div>
           <p>Offizieller BVB-Fanclub</p>
-          <h1>Bottwartal Borussen</h1>
+          <h2>Bottwartal Borussen</h2>
         </div>
       </section>
 
       <section class="auth-panel">
-        <p class="eyebrow">Members only</p>
+        <p class="eyebrow">Mitgliederbereich</p>
         <h1>Login</h1>
         <p>
-          Melde dich mit deinem Mitgliedskonto an. Danach kommst du in den geschützten Bereich
-          mit internen Terminen und Fanclub-Infos.
+          Melde dich mit deinem Mitgliedskonto an, um unsere Termine, Fahrten
+          und internen Fanclub-Infos zu sehen.
         </p>
 
         <form class="auth-form" data-login-form>
@@ -57,7 +58,7 @@
           />
 
           <button class="button primary" type="submit">Einloggen</button>
-          <p class="auth-message" data-auth-message></p>
+          <p class="auth-message" data-auth-message role="status" aria-live="polite"></p>
         </form>
       </section>
     </main>
