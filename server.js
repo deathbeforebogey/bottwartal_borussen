@@ -7,7 +7,9 @@ const {
   createSupabaseAdminClient,
   createSupabaseClient,
   createSupabaseClientForSession,
+  isSupabaseUnavailable,
 } = require("./utils/supabase-node");
+const { log } = require("./utils/log");
 
 loadEnvFile();
 
@@ -16,6 +18,8 @@ const PORT = Number(process.env.PORT || 3000);
 const ACCESS_COOKIE = "bwb_sb_access";
 const REFRESH_COOKIE = "bwb_sb_refresh";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+const SUPABASE_UNAVAILABLE_MESSAGE =
+  "Der Mitglieder-Dienst ist gerade nicht erreichbar. Bitte später erneut versuchen.";
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -29,8 +33,29 @@ const mimeTypes = {
   ".ico": "image/x-icon",
 };
 
+const SECURITY_HEADERS = {
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data:",
+    "connect-src 'self' https://api.openligadb.de",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; "),
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  ...(process.env.NODE_ENV === "production"
+    ? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains" }
+    : {}),
+};
+
 const send = (response, status, body, headers = {}) => {
-  response.writeHead(status, headers);
+  response.writeHead(status, { ...SECURITY_HEADERS, ...headers });
   response.end(body);
 };
 
@@ -76,7 +101,8 @@ const readJsonBody = async (request) => {
   }
 
   try {
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    request.jsonBody = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    return request.jsonBody;
   } catch (error) {
     throw httpError(400, "Ungültige Anfrage.");
   }
@@ -102,6 +128,44 @@ const RSVP_STATUSES = new Set(["yes", "maybe", "no"]);
 
 const getTodayInBerlin = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 
+const getClientIp = (request) =>
+  String(request.headers["x-forwarded-for"] || "").split(",")[0].trim() || request.socket.remoteAddress || "";
+
+// Einfache Sperre gegen Passwort-Raten: 10 Fehlversuche pro IP und E-Mail in 15 Minuten.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILURES = 10;
+const failedLogins = new Map();
+
+const isLoginBlocked = (key) => {
+  const entry = failedLogins.get(key);
+
+  if (!entry || Date.now() - entry.firstAt > LOGIN_WINDOW_MS) {
+    failedLogins.delete(key);
+    return false;
+  }
+
+  return entry.count >= LOGIN_MAX_FAILURES;
+};
+
+const recordFailedLogin = (key) => {
+  // Alte Einträge gelegentlich aufräumen, damit die Liste nicht wächst.
+  if (failedLogins.size > 1000) {
+    failedLogins.forEach((value, mapKey) => {
+      if (Date.now() - value.firstAt > LOGIN_WINDOW_MS) failedLogins.delete(mapKey);
+    });
+  }
+
+  const entry = failedLogins.get(key);
+
+  if (!entry || Date.now() - entry.firstAt > LOGIN_WINDOW_MS) {
+    failedLogins.set(key, { count: 1, firstAt: Date.now() });
+  } else {
+    entry.count += 1;
+  }
+};
+
+const clearFailedLogins = (key) => failedLogins.delete(key);
+
 const setAuthCookies = (response, session) => {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   response.setHeader("Set-Cookie", [
@@ -126,7 +190,13 @@ const getSupabaseForRequest = async (request, response) => {
     return { supabase: createSupabaseClient(), user: null };
   }
 
-  const { supabase, session } = await createSupabaseClientForSession(accessToken, refreshToken);
+  const { supabase, session, error } = await createSupabaseClientForSession(accessToken, refreshToken);
+
+  // Bei einem Supabase-Ausfall die Cookies behalten, damit niemand unnötig ausgeloggt wird.
+  if (isSupabaseUnavailable(error)) {
+    log("error", "Supabase nicht erreichbar (Session)", { error: error.message });
+    throw httpError(503, SUPABASE_UNAVAILABLE_MESSAGE);
+  }
 
   // setSession prüft den Token bereits bei Supabase, session.user ist also verifiziert.
   if (!session?.user) {
@@ -139,6 +209,7 @@ const getSupabaseForRequest = async (request, response) => {
     setAuthCookies(response, session);
   }
 
+  response.userId = session.user.id;
   return { supabase, user: session.user };
 };
 
@@ -174,6 +245,50 @@ const requireAdmin = async (request, response) => {
 const getBodyId = (body, pathname, prefix) =>
   body.id || pathname.slice(prefix.length).replace(/^\//, "");
 
+const AUDIT_RESOURCES = {
+  sections: "Startseiten-Block",
+  content: "Texte",
+  articles: "Artikel",
+  events: "Termin",
+  users: "Mitglied",
+};
+const AUDIT_ACTIONS = { POST: "angelegt", PUT: "geändert", DELETE: "gelöscht" };
+
+// Protokolliert jede erfolgreiche Änderung im Adminbereich (wer, was, wann). Passwörter nie.
+const writeAuditLog = async ({ admin, user }, request, response, pathname) => {
+  const [, , , resource, targetId] = pathname.split("/");
+  const body = request.jsonBody || {};
+  const details = {};
+
+  if (resource === "users") {
+    if (body.role) details.role = body.role;
+    if (body.password) details.passwordChanged = true;
+  }
+
+  const entry = {
+    actor_id: user.id,
+    actor_email: user.email,
+    action: AUDIT_ACTIONS[request.method] || request.method,
+    target_type: AUDIT_RESOURCES[resource] || resource,
+    target_id: targetId || response.auditTargetId || null,
+    target_label:
+      response.auditLabel ||
+      body.title ||
+      body.email ||
+      (Array.isArray(body.items) ? body.items.map((item) => item.key).join(", ") : "") ||
+      "",
+    details,
+  };
+
+  log("info", `Admin: ${entry.target_type} ${entry.action}`, { by: user.email, target: entry.target_label });
+
+  const { error } = await admin.from("admin_audit_log").insert(entry);
+
+  if (error) {
+    log("error", "Protokolleintrag konnte nicht gespeichert werden", { error: error.message });
+  }
+};
+
 const handleAdminApi = async (request, response, pathname) => {
   if (!pathname.startsWith("/api/admin/")) {
     return false;
@@ -185,7 +300,38 @@ const handleAdminApi = async (request, response, pathname) => {
     return true;
   }
 
+  await routeAdminRequest(request, response, pathname, adminAuth);
+
+  if (request.method !== "GET" && response.statusCode < 400) {
+    await writeAuditLog(adminAuth, request, response, pathname);
+  }
+
+  return true;
+};
+
+const sendServerError = (response, error, context = "Datenbankfehler") => {
+  log("error", context, { error: error.message, code: error.code });
+  sendJson(response, 500, { error: error.message });
+};
+
+const routeAdminRequest = async (request, response, pathname, adminAuth) => {
   const { admin, user: currentUser } = adminAuth;
+
+  if (pathname === "/api/admin/audit" && request.method === "GET") {
+    const { data, error } = await admin
+      .from("admin_audit_log")
+      .select("created_at, actor_email, action, target_type, target_label, details")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      sendServerError(response, error, "Protokoll konnte nicht geladen werden");
+      return true;
+    }
+
+    sendJson(response, 200, data, { "Cache-Control": "no-store" });
+    return true;
+  }
 
   if (pathname === "/api/admin/content" && request.method === "GET") {
     const { data, error } = await admin
@@ -194,7 +340,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .order("key");
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -209,7 +355,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .order("sort_order", { ascending: true });
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -235,7 +381,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .single();
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -264,7 +410,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .single();
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -274,10 +420,11 @@ const handleAdminApi = async (request, response, pathname) => {
 
   if (pathname.startsWith("/api/admin/sections/") && request.method === "DELETE") {
     const id = pathname.slice("/api/admin/sections/".length);
-    const { error } = await admin.from("site_sections").delete().eq("id", id);
+    const { data: deleted, error } = await admin.from("site_sections").delete().eq("id", id).select("title");
+    response.auditLabel = deleted?.[0]?.title;
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -302,7 +449,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .select("key, label, value");
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -317,7 +464,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .order("created_at", { ascending: false });
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -339,7 +486,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .single();
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -364,7 +511,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .single();
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -374,10 +521,11 @@ const handleAdminApi = async (request, response, pathname) => {
 
   if (pathname.startsWith("/api/admin/articles/") && request.method === "DELETE") {
     const id = pathname.slice("/api/admin/articles/".length);
-    const { error } = await admin.from("articles").delete().eq("id", id);
+    const { data: deleted, error } = await admin.from("articles").delete().eq("id", id).select("title");
+    response.auditLabel = deleted?.[0]?.title;
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -392,7 +540,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .order("event_date", { ascending: true });
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -416,7 +564,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .single();
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -442,7 +590,7 @@ const handleAdminApi = async (request, response, pathname) => {
       .single();
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -452,10 +600,11 @@ const handleAdminApi = async (request, response, pathname) => {
 
   if (pathname.startsWith("/api/admin/events/") && request.method === "DELETE") {
     const id = pathname.slice("/api/admin/events/".length);
-    const { error } = await admin.from("member_events").delete().eq("id", id);
+    const { data: deleted, error } = await admin.from("member_events").delete().eq("id", id).select("title");
+    response.auditLabel = deleted?.[0]?.title;
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -467,7 +616,7 @@ const handleAdminApi = async (request, response, pathname) => {
     const { data, error } = await admin.auth.admin.listUsers();
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -498,7 +647,7 @@ const handleAdminApi = async (request, response, pathname) => {
     });
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -543,7 +692,7 @@ const handleAdminApi = async (request, response, pathname) => {
     const { data, error } = await admin.auth.admin.updateUserById(id, updates);
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -564,10 +713,12 @@ const handleAdminApi = async (request, response, pathname) => {
       return true;
     }
 
+    const { data: userToDelete } = await admin.auth.admin.getUserById(id);
+    response.auditLabel = userToDelete?.user?.email;
     const { error } = await admin.auth.admin.deleteUser(id);
 
     if (error) {
-      sendJson(response, 500, { error: error.message });
+      sendServerError(response, error);
       return true;
     }
 
@@ -583,6 +734,29 @@ const handleApi = async (request, response, pathname) => {
   const handledAdminApi = await handleAdminApi(request, response, pathname);
 
   if (handledAdminApi) {
+    return true;
+  }
+
+  // Für Uptime-Monitoring: prüft, ob die Datenbank erreichbar ist.
+  if (pathname === "/api/health" && request.method === "GET") {
+    let ok = false;
+
+    try {
+      const { error } = await createSupabaseClient()
+        .from("site_content")
+        .select("key", { head: true, count: "exact" });
+      ok = !error;
+
+      if (error) {
+        log("error", "Health-Check: Datenbank nicht erreichbar", { error: error.message });
+      }
+    } catch (error) {
+      log("error", "Health-Check: Supabase-Konfiguration fehlt", { error: error.message });
+    }
+
+    sendJson(response, ok ? 200 : 503, { ok, database: ok ? "erreichbar" : "nicht erreichbar" }, {
+      "Cache-Control": "no-store",
+    });
     return true;
   }
 
@@ -606,7 +780,9 @@ const handleApi = async (request, response, pathname) => {
     const supabase = createSupabaseClient();
     const { data, error } = await supabase.from("site_content").select("key, value");
 
+    // Die Startseite zeigt dann ihre eingebauten Standardtexte.
     if (error) {
+      log("error", "Seitentexte konnten nicht geladen werden", { error: error.message });
       sendJson(response, 200, {});
       return true;
     }
@@ -624,6 +800,7 @@ const handleApi = async (request, response, pathname) => {
       .order("sort_order", { ascending: true });
 
     if (error) {
+      log("error", "Startseiten-Blöcke konnten nicht geladen werden", { error: error.message });
       sendJson(response, 200, []);
       return true;
     }
@@ -642,7 +819,8 @@ const handleApi = async (request, response, pathname) => {
       .limit(6);
 
     if (error) {
-      sendJson(response, 200, []);
+      log("error", "Artikel konnten nicht geladen werden", { error: error.message });
+      sendJson(response, 503, { error: "Meldungen konnten nicht geladen werden." });
       return true;
     }
 
@@ -651,38 +829,61 @@ const handleApi = async (request, response, pathname) => {
   }
 
   if (pathname === "/api/login" && request.method === "POST") {
-    try {
-      const body = await readJsonBody(request);
-      const email = String(body.email || body.username || "").trim();
-      const password = String(body.password || "");
-      const supabase = createSupabaseClient();
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const body = await readJsonBody(request);
+    const email = String(body.email || body.username || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const ip = getClientIp(request);
+    const limitKey = `${ip}|${email}`;
 
-      if (error || !data.session) {
-        sendJson(response, 401, { error: "Ungültige Login-Daten" });
-        return true;
-      }
-
-      setAuthCookies(response, data.session);
-      sendJson(response, 200, { authenticated: true });
-      return true;
-    } catch (error) {
-      if (error.statusCode) {
-        throw error;
-      }
-
-      console.error("Login error:", error);
-      sendJson(response, 500, {
-        error:
-          "Login-Serverfehler. Bitte Supabase Environment Variables beim Hosting prüfen.",
+    if (isLoginBlocked(limitKey)) {
+      log("warn", "Login gesperrt (zu viele Fehlversuche)", { email, ip });
+      sendJson(response, 429, {
+        error: "Zu viele Fehlversuche. Bitte warte 15 Minuten und versuche es dann erneut.",
       });
       return true;
     }
+
+    let result;
+
+    try {
+      result = await createSupabaseClient().auth.signInWithPassword({ email, password });
+    } catch (error) {
+      log("error", "Login fehlgeschlagen: Supabase-Konfiguration", { error: error.message });
+      sendJson(response, 503, { error: SUPABASE_UNAVAILABLE_MESSAGE });
+      return true;
+    }
+
+    const { data, error } = result;
+
+    if (isSupabaseUnavailable(error)) {
+      log("error", "Login fehlgeschlagen: Supabase nicht erreichbar", { error: error.message });
+      sendJson(response, 503, { error: SUPABASE_UNAVAILABLE_MESSAGE });
+      return true;
+    }
+
+    if (error || !data.session) {
+      recordFailedLogin(limitKey);
+      log("warn", "Login abgelehnt", { email, ip, reason: error?.message });
+      sendJson(response, 401, { error: "E-Mail oder Passwort ist falsch." });
+      return true;
+    }
+
+    clearFailedLogins(limitKey);
+    setAuthCookies(response, data.session);
+    log("info", "Login erfolgreich", { user: data.user.id.slice(0, 8) });
+    sendJson(response, 200, { authenticated: true });
+    return true;
   }
 
   if (pathname === "/api/logout" && request.method === "POST") {
-    const { supabase } = await getSupabaseForRequest(request, response);
-    await supabase.auth.signOut();
+    // Auch wenn Supabase gerade nicht erreichbar ist: lokal immer ausloggen.
+    try {
+      const { supabase } = await getSupabaseForRequest(request, response);
+      await supabase.auth.signOut();
+    } catch (error) {
+      log("warn", "Abmelden bei Supabase fehlgeschlagen", { error: error.message });
+    }
+
     clearAuthCookies(response);
     sendJson(response, 200, { authenticated: false });
     return true;
@@ -704,6 +905,7 @@ const handleApi = async (request, response, pathname) => {
       .order("event_date", { ascending: true });
 
     if (error) {
+      log("error", "Termine konnten nicht geladen werden", { error: error.message });
       sendJson(response, 500, { error: "Termine konnten nicht geladen werden." });
       return true;
     }
@@ -716,6 +918,10 @@ const handleApi = async (request, response, pathname) => {
           .in("event_id", data.map((event) => event.id))
           .order("updated_at", { ascending: true })
       : { data: [], error: null };
+
+    if (rsvpError) {
+      log("warn", "Zusagen konnten nicht geladen werden", { error: rsvpError.message });
+    }
 
     const rsvps = rsvpError ? [] : rsvpData;
 
@@ -779,11 +985,12 @@ const handleApi = async (request, response, pathname) => {
     );
 
     if (error) {
-      console.error("RSVP error:", error);
+      log("error", "Zusage konnte nicht gespeichert werden", { error: error.message, event: eventId });
       sendJson(response, 500, { error: "Antwort konnte nicht gespeichert werden." });
       return true;
     }
 
+    log("info", "Zusage gespeichert", { user: user.id.slice(0, 8), event: eventId, status });
     sendJson(response, 200, { ok: true });
     return true;
   }
@@ -855,8 +1062,24 @@ const serveStatic = async (request, response, pathname) => {
   }
 };
 
+const isPageOrApi = (pathname) => pathname.startsWith("/api/") || pathname === "/" || pathname.endsWith(".html");
+
 const server = http.createServer(async (request, response) => {
+  const startedAt = Date.now();
   const { pathname } = new URL(request.url, `http://${request.headers.host}`);
+
+  // Ein Log-Eintrag pro Seiten- und API-Aufruf; CSS, JS und Bilder nur bei Fehlern.
+  response.on("finish", () => {
+    if (!isPageOrApi(pathname) && response.statusCode < 400) {
+      return;
+    }
+
+    log(response.statusCode >= 500 ? "error" : "info", `${request.method} ${pathname}`, {
+      status: response.statusCode,
+      ms: Date.now() - startedAt,
+      user: response.userId?.slice(0, 8),
+    });
+  });
 
   try {
     if (pathname.startsWith("/api/") && request.method !== "GET" && !isSameOrigin(request)) {
@@ -870,16 +1093,36 @@ const server = http.createServer(async (request, response) => {
       await serveStatic(request, response, pathname);
     }
   } catch (error) {
-    if (error.statusCode) {
-      sendJson(response, error.statusCode, { error: error.message });
+    if (response.headersSent) {
+      log("error", "Fehler nach dem Senden der Antwort", { path: pathname, error: error.message });
+      response.end();
       return;
     }
 
-    console.error("Server error:", error);
-    sendJson(response, 500, { error: "Serverfehler" });
+    const status = error.statusCode || 500;
+
+    if (!error.statusCode) {
+      log("error", "Unerwarteter Serverfehler", { path: pathname, error: error.stack || error.message });
+    }
+
+    const message = error.statusCode ? error.message : "Serverfehler. Bitte später erneut versuchen.";
+
+    if (pathname.startsWith("/api/")) {
+      sendJson(response, status, { error: message });
+    } else {
+      send(response, status, message, { "Content-Type": "text/plain; charset=utf-8" });
+    }
   }
 });
 
 server.listen(PORT, () => {
-  console.log(`Bottwartal Borussen läuft auf http://127.0.0.1:${PORT}`);
+  log("info", `Bottwartal Borussen läuft auf http://127.0.0.1:${PORT}`);
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) {
+    log("error", "Supabase URL oder Publishable Key fehlt. Login und Mitgliederbereich funktionieren nicht.");
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    log("warn", "SUPABASE_SERVICE_ROLE_KEY fehlt. Der Adminbereich funktioniert nicht.");
+  }
 });

@@ -8,6 +8,7 @@ const articlesList = document.querySelector("[data-articles-list]");
 const eventsList = document.querySelector("[data-events-list]");
 const usersList = document.querySelector("[data-users-list]");
 const sectionsList = document.querySelector("[data-sections-list]");
+const auditList = document.querySelector("[data-audit-list]");
 
 const escapeHtml = (value = "") =>
   String(value ?? "")
@@ -49,6 +50,7 @@ const runAction = async (action, successMessage) => {
   try {
     await action();
     setStatus(successMessage);
+    loadAudit().catch(() => {});
     return true;
   } catch (error) {
     setStatus(`Fehler: ${error.message}`);
@@ -63,7 +65,7 @@ const showSetupMessage = (target, message) => {
     <div class="admin-help">
       <strong>Setup erforderlich</strong>
       <p>${escapeHtml(message)}</p>
-      <p>Führe in Supabase den SQL-Inhalt aus: <code>supabase/member-events.sql</code></p>
+      <p>Führe in Supabase den SQL-Inhalt aus: <code>supabase/setup.sql</code></p>
     </div>
   `;
 };
@@ -349,6 +351,38 @@ document.querySelector("[data-admin-logout]").addEventListener("click", async ()
   window.location.href = "/";
 });
 
+const formatDateTime = (value) =>
+  new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+
+const loadAudit = async () => {
+  const entries = await api("/api/admin/audit");
+
+  if (!entries.length) {
+    auditList.innerHTML = '<p class="admin-empty">Noch keine Änderungen protokolliert.</p>';
+    return;
+  }
+
+  auditList.innerHTML = entries
+    .map((entry) => {
+      const extras = [
+        entry.details?.role ? `Rolle: ${entry.details.role}` : "",
+        entry.details?.passwordChanged ? "Passwort geändert" : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      return `
+        <article class="admin-row">
+          <div>
+            <strong>${escapeHtml(entry.target_type)} ${escapeHtml(entry.action)}${entry.target_label ? `: ${escapeHtml(entry.target_label)}` : ""}</strong>
+            <span>${escapeHtml(formatDateTime(entry.created_at))} · ${escapeHtml(entry.actor_email)}${extras ? ` · ${escapeHtml(extras)}` : ""}</span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+};
+
 const initAdmin = async () => {
   const results = await Promise.allSettled([
     loadSections(),
@@ -356,7 +390,12 @@ const initAdmin = async () => {
     loadArticles(),
     loadEvents(),
     loadUsers(),
+    loadAudit(),
   ]);
+
+  if (results[5].status === "rejected") {
+    showSetupMessage(auditList, results[5].reason.message);
+  }
 
   if (results[0].status === "rejected") {
     showSetupMessage(sectionsList, results[0].reason.message);

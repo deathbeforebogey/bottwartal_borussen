@@ -196,9 +196,18 @@ const loadMembersArea = async () => {
   try {
     const sessionResponse = await fetch("/api/session", { credentials: "same-origin" });
     session = await sessionResponse.json();
+
+    if (!sessionResponse.ok) {
+      throw new Error(session.error);
+    }
   } catch (error) {
-    welcome.textContent = "Session konnte nicht geladen werden.";
+    // Netzwerkfehler (TypeError) haben englische Browser-Meldungen, daher eigener Text.
+    welcome.textContent =
+      error instanceof TypeError || !error.message
+        ? "Server nicht erreichbar. Bitte später erneut versuchen."
+        : error.message;
     termsStatus.textContent = "";
+    newsStatus.textContent = "";
     return;
   }
 

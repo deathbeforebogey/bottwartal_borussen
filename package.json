@@ -5,10 +5,11 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "make-first-user-admin": "node scripts/make-first-user-admin.js"
+    "make-first-user-admin": "node scripts/make-first-user-admin.js",
+    "check": "node scripts/check-setup.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

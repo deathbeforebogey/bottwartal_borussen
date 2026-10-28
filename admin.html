@@ -27,6 +27,7 @@
         <a href="#artikel">Artikel</a>
         <a href="#termine">Termine</a>
         <a href="#mitglieder">Mitglieder</a>
+        <a href="#protokoll">Protokoll</a>
       </nav>
       <button class="button dark" type="button" data-admin-logout>Ausloggen</button>
     </header>
@@ -129,6 +130,14 @@
           <button class="button ghost" type="button" data-user-reset>Neu</button>
         </form>
         <div class="admin-list" data-users-list></div>
+      </section>
+
+      <section class="admin-section" id="protokoll">
+        <div>
+          <h2>Protokoll</h2>
+          <p>Die letzten 100 Änderungen im Adminbereich: wer hat wann was geändert.</p>
+        </div>
+        <div class="admin-list" data-audit-list></div>
       </section>
     </main>
 

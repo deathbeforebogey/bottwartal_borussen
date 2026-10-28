@@ -201,3 +201,4 @@ button, .button { cursor: pointer; }
 .member-news-item h3 { margin: 8px 0 0; font-size: 1.25rem; }
 .article-body { white-space: pre-line; }
 .news-empty { color: #bcbcb3; }
+.admin-empty { margin: 0; color: #bcbcb3; }

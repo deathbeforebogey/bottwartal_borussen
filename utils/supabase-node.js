@@ -46,7 +46,7 @@ const createSupabaseClientForSession = async (accessToken, refreshToken) => {
   const supabase = createSupabaseClient();
 
   if (!accessToken || !refreshToken) {
-    return { supabase, session: null };
+    return { supabase, session: null, error: null };
   }
 
   const { data, error } = await supabase.auth.setSession({
@@ -54,11 +54,17 @@ const createSupabaseClientForSession = async (accessToken, refreshToken) => {
     refresh_token: refreshToken,
   });
 
-  return { supabase, session: error ? null : data.session };
+  return { supabase, session: error ? null : data.session, error };
 };
+
+// Netzwerk- oder Serverprobleme bei Supabase, im Gegensatz zu ungültigen Zugangsdaten.
+const isSupabaseUnavailable = (error) =>
+  Boolean(error) &&
+  (error.name === "AuthRetryableFetchError" || error.status === 0 || error.status >= 500 || /fetch failed/i.test(error.message || ""));
 
 module.exports = {
   createSupabaseClient,
   createSupabaseAdminClient,
   createSupabaseClientForSession,
+  isSupabaseUnavailable,
 };
