@@ -25,7 +25,13 @@ const api = async (url, options = {}) => {
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (error) {
+    throw new Error(`Unerwartete Serverantwort (${response.status}).`);
+  }
 
   if (!response.ok) {
     throw new Error(data?.error || "Aktion fehlgeschlagen.");
@@ -37,6 +43,20 @@ const api = async (url, options = {}) => {
 const setStatus = (message) => {
   statusNode.textContent = message;
 };
+
+// Führt eine Admin-Aktion aus und zeigt Erfolg oder Fehler im Status an.
+const runAction = async (action, successMessage) => {
+  try {
+    await action();
+    setStatus(successMessage);
+    return true;
+  } catch (error) {
+    setStatus(`Fehler: ${error.message}`);
+    return false;
+  }
+};
+
+const confirmDelete = (name) => window.confirm(`„${name}“ wirklich löschen? Das kann nicht rückgängig gemacht werden.`);
 
 const showSetupMessage = (target, message) => {
   target.innerHTML = `
@@ -106,10 +126,13 @@ const loadSections = async () => {
   });
 
   sectionsList.querySelectorAll("[data-delete-section]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await api(`/api/admin/sections/${button.dataset.deleteSection}`, { method: "DELETE" });
-      await loadSections();
-      setStatus("Block gelöscht.");
+    button.addEventListener("click", () => {
+      const section = sections.find((item) => item.id === button.dataset.deleteSection);
+      if (!confirmDelete(section.title)) return;
+      runAction(async () => {
+        await api(`/api/admin/sections/${section.id}`, { method: "DELETE" });
+        await loadSections();
+      }, "Block gelöscht.");
     });
   });
 };
@@ -139,10 +162,13 @@ const loadArticles = async () => {
   });
 
   articlesList.querySelectorAll("[data-delete-article]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await api(`/api/admin/articles/${button.dataset.deleteArticle}`, { method: "DELETE" });
-      await loadArticles();
-      setStatus("Artikel gelöscht.");
+    button.addEventListener("click", () => {
+      const article = articles.find((item) => item.id === button.dataset.deleteArticle);
+      if (!confirmDelete(article.title)) return;
+      runAction(async () => {
+        await api(`/api/admin/articles/${article.id}`, { method: "DELETE" });
+        await loadArticles();
+      }, "Artikel gelöscht.");
     });
   });
 };
@@ -172,10 +198,13 @@ const loadEvents = async () => {
   });
 
   eventsList.querySelectorAll("[data-delete-event]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await api(`/api/admin/events/${button.dataset.deleteEvent}`, { method: "DELETE" });
-      await loadEvents();
-      setStatus("Termin gelöscht.");
+    button.addEventListener("click", () => {
+      const event = events.find((item) => item.id === button.dataset.deleteEvent);
+      if (!confirmDelete(event.title)) return;
+      runAction(async () => {
+        await api(`/api/admin/events/${event.id}`, { method: "DELETE" });
+        await loadEvents();
+      }, "Termin gelöscht.");
     });
   });
 };
@@ -211,92 +240,100 @@ const loadUsers = async () => {
   });
 
   usersList.querySelectorAll("[data-delete-user]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      await api(`/api/admin/users/${button.dataset.deleteUser}`, { method: "DELETE" });
-      await loadUsers();
-      setStatus("Mitglied gelöscht.");
+    button.addEventListener("click", () => {
+      const user = users.find((item) => item.id === button.dataset.deleteUser);
+      if (!confirmDelete(user.email)) return;
+      runAction(async () => {
+        await api(`/api/admin/users/${user.id}`, { method: "DELETE" });
+        await loadUsers();
+      }, "Mitglied gelöscht.");
     });
   });
 };
 
-contentForm.addEventListener("submit", async (event) => {
+contentForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const items = [...contentForm.querySelectorAll("textarea")].map((field) => ({
-    key: field.name,
-    label: field.dataset.label,
-    value: field.value,
-  }));
-  await api("/api/admin/content", { method: "PUT", body: JSON.stringify({ items }) });
-  setStatus("Texte gespeichert.");
+  runAction(async () => {
+    const items = [...contentForm.querySelectorAll("textarea")].map((field) => ({
+      key: field.name,
+      label: field.dataset.label,
+      value: field.value,
+    }));
+    await api("/api/admin/content", { method: "PUT", body: JSON.stringify({ items }) });
+  }, "Texte gespeichert.");
 });
 
-sectionForm.addEventListener("submit", async (event) => {
+sectionForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const formData = new FormData(sectionForm);
-  const id = formData.get("id");
-  const payload = Object.fromEntries(formData.entries());
-  delete payload.id;
-  payload.visible = formData.get("visible") === "on";
-  await api(id ? `/api/admin/sections/${id}` : "/api/admin/sections", {
-    method: id ? "PUT" : "POST",
-    body: JSON.stringify(payload),
-  });
-  resetForm(sectionForm);
-  sectionForm.elements.sort_order.value = "100";
-  sectionForm.elements.visible.checked = true;
-  await loadSections();
-  setStatus("Startseiten-Block gespeichert.");
+  runAction(async () => {
+    const formData = new FormData(sectionForm);
+    const id = formData.get("id");
+    const payload = Object.fromEntries(formData.entries());
+    delete payload.id;
+    payload.visible = formData.get("visible") === "on";
+    await api(id ? `/api/admin/sections/${id}` : "/api/admin/sections", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(payload),
+    });
+    resetForm(sectionForm);
+    sectionForm.elements.sort_order.value = "100";
+    sectionForm.elements.visible.checked = true;
+    await loadSections();
+  }, "Startseiten-Block gespeichert.");
 });
 
 
-articleForm.addEventListener("submit", async (event) => {
+articleForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const formData = new FormData(articleForm);
-  const id = formData.get("id");
-  const payload = {
-    title: formData.get("title"),
-    excerpt: formData.get("excerpt"),
-    body: formData.get("body"),
-    published: formData.get("published") === "on",
-  };
-  await api(id ? `/api/admin/articles/${id}` : "/api/admin/articles", {
-    method: id ? "PUT" : "POST",
-    body: JSON.stringify(payload),
-  });
-  resetForm(articleForm);
-  await loadArticles();
-  setStatus("Artikel gespeichert.");
+  runAction(async () => {
+    const formData = new FormData(articleForm);
+    const id = formData.get("id");
+    const payload = {
+      title: formData.get("title"),
+      excerpt: formData.get("excerpt"),
+      body: formData.get("body"),
+      published: formData.get("published") === "on",
+    };
+    await api(id ? `/api/admin/articles/${id}` : "/api/admin/articles", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(payload),
+    });
+    resetForm(articleForm);
+    await loadArticles();
+  }, "Artikel gespeichert.");
 });
 
-eventForm.addEventListener("submit", async (event) => {
+eventForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const formData = new FormData(eventForm);
-  const id = formData.get("id");
-  const payload = Object.fromEntries(formData.entries());
-  delete payload.id;
-  await api(id ? `/api/admin/events/${id}` : "/api/admin/events", {
-    method: id ? "PUT" : "POST",
-    body: JSON.stringify(payload),
-  });
-  resetForm(eventForm);
-  await loadEvents();
-  setStatus("Termin gespeichert.");
+  runAction(async () => {
+    const formData = new FormData(eventForm);
+    const id = formData.get("id");
+    const payload = Object.fromEntries(formData.entries());
+    delete payload.id;
+    await api(id ? `/api/admin/events/${id}` : "/api/admin/events", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(payload),
+    });
+    resetForm(eventForm);
+    await loadEvents();
+  }, "Termin gespeichert.");
 });
 
-userForm.addEventListener("submit", async (event) => {
+userForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const formData = new FormData(userForm);
-  const id = formData.get("id");
-  const payload = Object.fromEntries(formData.entries());
-  delete payload.id;
-  if (!payload.password) delete payload.password;
-  await api(id ? `/api/admin/users/${id}` : "/api/admin/users", {
-    method: id ? "PUT" : "POST",
-    body: JSON.stringify(payload),
-  });
-  resetForm(userForm);
-  await loadUsers();
-  setStatus("Mitglied gespeichert.");
+  runAction(async () => {
+    const formData = new FormData(userForm);
+    const id = formData.get("id");
+    const payload = Object.fromEntries(formData.entries());
+    delete payload.id;
+    if (!payload.password) delete payload.password;
+    await api(id ? `/api/admin/users/${id}` : "/api/admin/users", {
+      method: id ? "PUT" : "POST",
+      body: JSON.stringify(payload),
+    });
+    resetForm(userForm);
+    await loadUsers();
+  }, "Mitglied gespeichert.");
 });
 
 document.querySelector("[data-article-reset]").addEventListener("click", () => resetForm(articleForm));

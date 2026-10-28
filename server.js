@@ -91,15 +91,20 @@ const getSupabaseForRequest = async (request, response) => {
     return { supabase: createSupabaseClient(), user: null };
   }
 
-  const supabase = await createSupabaseClientForSession(accessToken, refreshToken);
-  const { data, error } = await supabase.auth.getUser();
+  const { supabase, session } = await createSupabaseClientForSession(accessToken, refreshToken);
 
-  if (error || !data.user) {
+  // setSession prüft den Token bereits bei Supabase, session.user ist also verifiziert.
+  if (!session?.user) {
     clearAuthCookies(response);
     return { supabase, user: null };
   }
 
-  return { supabase, user: data.user };
+  // Supabase vergibt beim Erneuern einen neuen Refresh-Token; der alte wird ungültig.
+  if (session.access_token !== accessToken || session.refresh_token !== refreshToken) {
+    setAuthCookies(response, session);
+  }
+
+  return { supabase, user: session.user };
 };
 
 // Nur app_metadata ist vertrauenswürdig: user_metadata kann jeder Nutzer selbst ändern.
@@ -145,7 +150,7 @@ const handleAdminApi = async (request, response, pathname) => {
     return true;
   }
 
-  const { admin } = adminAuth;
+  const { admin, user: currentUser } = adminAuth;
 
   if (pathname === "/api/admin/content" && request.method === "GET") {
     const { data, error } = await admin
@@ -469,6 +474,12 @@ const handleAdminApi = async (request, response, pathname) => {
   if (pathname.startsWith("/api/admin/users/") && request.method === "PUT") {
     const body = await readJsonBody(request);
     const id = getBodyId(body, pathname, "/api/admin/users");
+
+    if (id === currentUser.id && body.role && body.role !== "admin") {
+      sendJson(response, 400, { error: "Du kannst dir die Admin-Rolle nicht selbst entziehen." });
+      return true;
+    }
+
     const { data: existingUserData, error: getUserError } = await admin.auth.admin.getUserById(id);
 
     if (getUserError || !existingUserData.user) {
@@ -512,6 +523,12 @@ const handleAdminApi = async (request, response, pathname) => {
 
   if (pathname.startsWith("/api/admin/users/") && request.method === "DELETE") {
     const id = pathname.slice("/api/admin/users/".length);
+
+    if (id === currentUser.id) {
+      sendJson(response, 400, { error: "Du kannst dein eigenes Konto nicht löschen." });
+      return true;
+    }
+
     const { error } = await admin.auth.admin.deleteUser(id);
 
     if (error) {

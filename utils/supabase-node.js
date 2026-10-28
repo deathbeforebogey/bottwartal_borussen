@@ -40,17 +40,21 @@ const createSupabaseAdminClient = () => {
   });
 };
 
+// Gibt zusätzlich die aktuelle Session zurück. Ist der Access-Token abgelaufen,
+// erneuert Supabase ihn dabei; die neuen Tokens müssen dann in die Cookies.
 const createSupabaseClientForSession = async (accessToken, refreshToken) => {
   const supabase = createSupabaseClient();
 
-  if (accessToken && refreshToken) {
-    await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
+  if (!accessToken || !refreshToken) {
+    return { supabase, session: null };
   }
 
-  return supabase;
+  const { data, error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+
+  return { supabase, session: error ? null : data.session };
 };
 
 module.exports = {
