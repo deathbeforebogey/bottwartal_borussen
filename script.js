@@ -2,6 +2,7 @@ const header = document.querySelector("[data-header]");
 const menuButton = document.querySelector("[data-menu-button]");
 const nav = document.querySelector("[data-nav]");
 const siteSections = document.querySelector("[data-site-sections]");
+const newsGrid = document.querySelector("[data-news-grid]");
 const nextMatchElements = {
   home: document.querySelector("[data-next-home]"),
   away: document.querySelector("[data-next-away]"),
@@ -257,8 +258,50 @@ const loadSiteSections = async () => {
   }
 };
 
+const formatArticleDate = (value) =>
+  new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
+
+const renderArticles = (articles) => {
+  if (!articles.length) {
+    newsGrid.innerHTML = '<p class="news-empty">Gerade gibt es keine neuen Meldungen. Schau bald wieder vorbei.</p>';
+    return;
+  }
+
+  newsGrid.innerHTML = articles
+    .map(
+      (article) => `
+        <article class="news-card">
+          <time datetime="${escapeHtml(article.created_at)}">${formatArticleDate(article.created_at)}</time>
+          <h3>${escapeHtml(article.title)}</h3>
+          <p>${escapeHtml(article.excerpt)}</p>
+          ${
+            article.body && article.body !== article.excerpt
+              ? `<details><summary>Weiterlesen</summary><p class="article-body">${escapeHtml(article.body)}</p></details>`
+              : ""
+          }
+        </article>
+      `
+    )
+    .join("");
+};
+
+const loadArticles = async () => {
+  try {
+    const response = await fetch("/api/site/articles");
+
+    if (!response.ok) {
+      throw new Error();
+    }
+
+    renderArticles(await response.json());
+  } catch (error) {
+    newsGrid.innerHTML = '<p class="news-empty">Meldungen konnten gerade nicht geladen werden.</p>';
+  }
+};
+
 updateHeader();
 loadSiteContent();
 loadSiteSections();
+loadArticles();
 loadNextBvbMatch();
 window.addEventListener("scroll", updateHeader, { passive: true });

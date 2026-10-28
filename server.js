@@ -53,10 +53,21 @@ const parseCookies = (request) =>
       })
   );
 
+const MAX_BODY_BYTES = 100 * 1024;
+
+const httpError = (statusCode, message) => Object.assign(new Error(message), { statusCode });
+
 const readJsonBody = async (request) => {
   const chunks = [];
+  let size = 0;
 
   for await (const chunk of request) {
+    size += chunk.length;
+
+    if (size > MAX_BODY_BYTES) {
+      throw httpError(413, "Anfrage zu groß.");
+    }
+
     chunks.push(chunk);
   }
 
@@ -64,8 +75,32 @@ const readJsonBody = async (request) => {
     return {};
   }
 
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch (error) {
+    throw httpError(400, "Ungültige Anfrage.");
+  }
 };
+
+// Schreibende Anfragen nur von der eigenen Seite annehmen (Schutz vor CSRF).
+const isSameOrigin = (request) => {
+  const origin = request.headers.origin;
+
+  if (!origin) {
+    return true;
+  }
+
+  try {
+    return new URL(origin).host === request.headers.host;
+  } catch (error) {
+    return false;
+  }
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RSVP_STATUSES = new Set(["yes", "maybe", "no"]);
+
+const getTodayInBerlin = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 
 const setAuthCookies = (response, session) => {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
@@ -597,6 +632,24 @@ const handleApi = async (request, response, pathname) => {
     return true;
   }
 
+  if (pathname === "/api/site/articles" && request.method === "GET") {
+    const supabase = createSupabaseClient();
+    const { data, error } = await supabase
+      .from("articles")
+      .select("id, title, excerpt, body, created_at")
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    if (error) {
+      sendJson(response, 200, []);
+      return true;
+    }
+
+    sendJson(response, 200, data, { "Cache-Control": "no-store" });
+    return true;
+  }
+
   if (pathname === "/api/login" && request.method === "POST") {
     try {
       const body = await readJsonBody(request);
@@ -614,6 +667,10 @@ const handleApi = async (request, response, pathname) => {
       sendJson(response, 200, { authenticated: true });
       return true;
     } catch (error) {
+      if (error.statusCode) {
+        throw error;
+      }
+
       console.error("Login error:", error);
       sendJson(response, 500, {
         error:
@@ -639,9 +696,11 @@ const handleApi = async (request, response, pathname) => {
       return true;
     }
 
+    // Vergangene Termine ausblenden.
     const { data, error } = await supabase
       .from("member_events")
-      .select("event_date, day, month, event_time, title, description")
+      .select("id, event_date, day, month, event_time, title, description")
+      .gte("event_date", getTodayInBerlin())
       .order("event_date", { ascending: true });
 
     if (error) {
@@ -649,19 +708,83 @@ const handleApi = async (request, response, pathname) => {
       return true;
     }
 
+    // Fehlt die Tabelle event_rsvps noch, werden die Termine trotzdem angezeigt.
+    const { data: rsvpData, error: rsvpError } = data.length
+      ? await supabase
+          .from("event_rsvps")
+          .select("event_id, user_id, display_name, status, comment")
+          .in("event_id", data.map((event) => event.id))
+          .order("updated_at", { ascending: true })
+      : { data: [], error: null };
+
+    const rsvps = rsvpError ? [] : rsvpData;
+
     sendJson(
       response,
       200,
       data.map((event) => ({
+        id: event.id,
         date: event.event_date,
         day: event.day,
         month: event.month,
         time: event.event_time,
         title: event.title,
         description: event.description,
+        rsvpEnabled: !rsvpError,
+        rsvps: rsvps
+          .filter((rsvp) => rsvp.event_id === event.id)
+          .map((rsvp) => ({
+            name: rsvp.display_name,
+            status: rsvp.status,
+            comment: rsvp.comment,
+            isMe: rsvp.user_id === user.id,
+          })),
       })),
       { "Cache-Control": "no-store" }
     );
+    return true;
+  }
+
+  const rsvpMatch = pathname.match(/^\/api\/member\/terms\/([^/]+)\/rsvp$/);
+
+  if (rsvpMatch && request.method === "PUT") {
+    const { supabase, user } = await getSupabaseForRequest(request, response);
+
+    if (!user) {
+      sendJson(response, 401, { error: "Nicht eingeloggt" });
+      return true;
+    }
+
+    const eventId = rsvpMatch[1];
+    const body = await readJsonBody(request);
+    const status = String(body.status || "");
+    const comment = String(body.comment || "").trim().slice(0, 300);
+
+    if (!UUID_PATTERN.test(eventId) || !RSVP_STATUSES.has(status)) {
+      sendJson(response, 400, { error: "Ungültige Angaben." });
+      return true;
+    }
+
+    // Läuft mit der Session des Mitglieds: RLS erlaubt nur die eigene Antwort.
+    const { error } = await supabase.from("event_rsvps").upsert(
+      {
+        event_id: eventId,
+        user_id: user.id,
+        display_name: user.user_metadata?.display_name || user.email,
+        status,
+        comment,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "event_id,user_id" }
+    );
+
+    if (error) {
+      console.error("RSVP error:", error);
+      sendJson(response, 500, { error: "Antwort konnte nicht gespeichert werden." });
+      return true;
+    }
+
+    sendJson(response, 200, { ok: true });
     return true;
   }
 
@@ -736,12 +859,22 @@ const server = http.createServer(async (request, response) => {
   const { pathname } = new URL(request.url, `http://${request.headers.host}`);
 
   try {
+    if (pathname.startsWith("/api/") && request.method !== "GET" && !isSameOrigin(request)) {
+      sendJson(response, 403, { error: "Anfrage von fremder Seite abgelehnt." });
+      return;
+    }
+
     const handled = await handleApi(request, response, pathname);
 
     if (!handled) {
       await serveStatic(request, response, pathname);
     }
   } catch (error) {
+    if (error.statusCode) {
+      sendJson(response, error.statusCode, { error: error.message });
+      return;
+    }
+
     console.error("Server error:", error);
     sendJson(response, 500, { error: "Serverfehler" });
   }
