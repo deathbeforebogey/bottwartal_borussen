@@ -4,6 +4,14 @@ const termsStatus = document.querySelector("[data-member-terms-status]");
 const logoutButton = document.querySelector("[data-logout]");
 const adminLink = document.querySelector("[data-admin-link]");
 
+const escapeHtml = (value = "") =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
 const renderTerms = (terms) => {
   if (!terms.length) {
     termsContainer.innerHTML = "";
@@ -16,14 +24,14 @@ const renderTerms = (terms) => {
     .map(
       (term) => `
         <article class="schedule-item">
-          <time datetime="${term.date}">
-            <span>${term.day}</span>
-            ${term.month}
+          <time datetime="${escapeHtml(term.date)}">
+            <span>${escapeHtml(term.day)}</span>
+            ${escapeHtml(term.month)}
           </time>
           <div>
-            <p>${term.time}</p>
-            <h3>${term.title}</h3>
-            <span>${term.description}</span>
+            <p>${escapeHtml(term.time)}</p>
+            <h3>${escapeHtml(term.title)}</h3>
+            <span>${escapeHtml(term.description)}</span>
           </div>
         </article>
       `

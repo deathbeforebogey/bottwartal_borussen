@@ -209,6 +209,9 @@ const escapeHtml = (value = "") =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
+// Nur Anker, interne Pfade, http(s) und mailto zulassen, keine javascript:-Links.
+const isSafeUrl = (url = "") => /^(#|\/(?!\/)|https?:\/\/|mailto:)/i.test(String(url).trim());
+
 const renderSiteSections = (sections) => {
   if (!siteSections || !sections.length) {
     return;
@@ -220,7 +223,7 @@ const renderSiteSections = (sections) => {
         ? section.type
         : "highlight";
       const button =
-        section.button_label && section.button_url
+        section.button_label && section.button_url && isSafeUrl(section.button_url)
           ? `<a class="button primary" href="${escapeHtml(section.button_url)}">${escapeHtml(section.button_label)}</a>`
           : "";
 

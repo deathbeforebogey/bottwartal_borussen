@@ -9,6 +9,14 @@ const eventsList = document.querySelector("[data-events-list]");
 const usersList = document.querySelector("[data-users-list]");
 const sectionsList = document.querySelector("[data-sections-list]");
 
+const escapeHtml = (value = "") =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
 const api = async (url, options = {}) => {
   const response = await fetch(url, {
     credentials: "same-origin",
@@ -34,7 +42,7 @@ const showSetupMessage = (target, message) => {
   target.innerHTML = `
     <div class="admin-help">
       <strong>Setup erforderlich</strong>
-      <p>${message}</p>
+      <p>${escapeHtml(message)}</p>
       <p>Führe in Supabase den SQL-Inhalt aus: <code>supabase/member-events.sql</code></p>
     </div>
   `;
@@ -64,8 +72,8 @@ const loadContent = async () => {
     .map(
       (item) => `
         <label>
-          ${item.label}
-          <textarea name="${item.key}" data-label="${item.label}" rows="3">${item.value}</textarea>
+          ${escapeHtml(item.label)}
+          <textarea name="${escapeHtml(item.key)}" data-label="${escapeHtml(item.label)}" rows="3">${escapeHtml(item.value)}</textarea>
         </label>
       `
     )
@@ -80,11 +88,11 @@ const loadSections = async () => {
       (section) => `
         <article class="admin-row">
           <div>
-            <strong>${section.sort_order}. ${section.title}</strong>
-            <span>${section.type} · ${section.visible ? "sichtbar" : "ausgeblendet"}</span>
+            <strong>${escapeHtml(section.sort_order)}. ${escapeHtml(section.title)}</strong>
+            <span>${escapeHtml(section.type)} · ${section.visible ? "sichtbar" : "ausgeblendet"}</span>
           </div>
-          <button type="button" data-edit-section="${section.id}">Bearbeiten</button>
-          <button type="button" data-delete-section="${section.id}">Löschen</button>
+          <button type="button" data-edit-section="${escapeHtml(section.id)}">Bearbeiten</button>
+          <button type="button" data-delete-section="${escapeHtml(section.id)}">Löschen</button>
         </article>
       `
     )
@@ -113,11 +121,11 @@ const loadArticles = async () => {
       (article) => `
         <article class="admin-row">
           <div>
-            <strong>${article.title}</strong>
+            <strong>${escapeHtml(article.title)}</strong>
             <span>${article.published ? "veröffentlicht" : "Entwurf"}</span>
           </div>
-          <button type="button" data-edit-article="${article.id}">Bearbeiten</button>
-          <button type="button" data-delete-article="${article.id}">Löschen</button>
+          <button type="button" data-edit-article="${escapeHtml(article.id)}">Bearbeiten</button>
+          <button type="button" data-delete-article="${escapeHtml(article.id)}">Löschen</button>
         </article>
       `
     )
@@ -146,11 +154,11 @@ const loadEvents = async () => {
       (event) => `
         <article class="admin-row">
           <div>
-            <strong>${event.title}</strong>
-            <span>${event.event_date} · ${event.event_time}</span>
+            <strong>${escapeHtml(event.title)}</strong>
+            <span>${escapeHtml(event.event_date)} · ${escapeHtml(event.event_time)}</span>
           </div>
-          <button type="button" data-edit-event="${event.id}">Bearbeiten</button>
-          <button type="button" data-delete-event="${event.id}">Löschen</button>
+          <button type="button" data-edit-event="${escapeHtml(event.id)}">Bearbeiten</button>
+          <button type="button" data-delete-event="${escapeHtml(event.id)}">Löschen</button>
         </article>
       `
     )
@@ -179,11 +187,11 @@ const loadUsers = async () => {
       (user) => `
         <article class="admin-row">
           <div>
-            <strong>${user.email}</strong>
-            <span>${user.displayName || "kein Anzeigename"} · ${user.role} · ${user.last_sign_in_at || "noch kein Login"}</span>
+            <strong>${escapeHtml(user.email)}</strong>
+            <span>${escapeHtml(user.displayName || "kein Anzeigename")} · ${escapeHtml(user.role)} · ${escapeHtml(user.last_sign_in_at || "noch kein Login")}</span>
           </div>
-          <button type="button" data-edit-user="${user.id}">Bearbeiten</button>
-          <button type="button" data-delete-user="${user.id}">Löschen</button>
+          <button type="button" data-edit-user="${escapeHtml(user.id)}">Bearbeiten</button>
+          <button type="button" data-delete-user="${escapeHtml(user.id)}">Löschen</button>
         </article>
       `
     )

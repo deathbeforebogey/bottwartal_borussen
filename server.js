@@ -102,11 +102,9 @@ const getSupabaseForRequest = async (request, response) => {
   return { supabase, user: data.user };
 };
 
+// Nur app_metadata ist vertrauenswürdig: user_metadata kann jeder Nutzer selbst ändern.
 const isAdminUser = (user) =>
-  user?.app_metadata?.role === "admin" ||
-  user?.app_metadata?.is_admin === true ||
-  user?.user_metadata?.role === "admin" ||
-  user?.user_metadata?.is_admin === true;
+  user?.app_metadata?.role === "admin" || user?.app_metadata?.is_admin === true;
 
 const requireAdmin = async (request, response) => {
   const auth = await getSupabaseForRequest(request, response);
@@ -442,7 +440,7 @@ const handleAdminApi = async (request, response, pathname) => {
         displayName: user.user_metadata?.display_name || "",
         created_at: user.created_at,
         last_sign_in_at: user.last_sign_in_at,
-        role: user.app_metadata?.role || user.user_metadata?.role || "member",
+        role: user.app_metadata?.role || "member",
       })),
       { "Cache-Control": "no-store" }
     );
@@ -483,7 +481,12 @@ const handleAdminApi = async (request, response, pathname) => {
 
     if (body.email) updates.email = body.email;
     if (body.password) updates.password = body.password;
-    if (body.role) updates.app_metadata = { ...(existingUser.app_metadata || {}), role: body.role };
+    if (body.role) {
+      updates.app_metadata = {
+        ...(existingUser.app_metadata || {}),
+        role: body.role === "admin" ? "admin" : "member",
+      };
+    }
     if (Object.prototype.hasOwnProperty.call(body, "displayName")) {
       updates.user_metadata = {
         ...(existingUser.user_metadata || {}),
@@ -653,11 +656,39 @@ const handleApi = async (request, response, pathname) => {
   return false;
 };
 
-const serveStatic = async (request, response, pathname) => {
-  const requestedPath = pathname === "/" ? "/index.html" : pathname;
-  const absolutePath = path.normalize(path.join(ROOT, decodeURIComponent(requestedPath)));
+// Nur diese Dateien sind öffentlich. Alles andere (.env.local, .git, server.js, ...) bleibt verborgen.
+const PUBLIC_FILES = new Set([
+  "/index.html",
+  "/login.html",
+  "/members.html",
+  "/admin.html",
+  "/impressum.html",
+  "/datenschutz.html",
+  "/styles.css",
+  "/design.css",
+  "/script.js",
+  "/auth.js",
+  "/members.js",
+  "/admin.js",
+]);
+const PUBLIC_DIRS = ["/assets/"];
 
-  if (!absolutePath.startsWith(ROOT) || absolutePath.includes(`${path.sep}data${path.sep}`)) {
+const isPublicPath = (requestedPath) =>
+  PUBLIC_FILES.has(requestedPath) || PUBLIC_DIRS.some((dir) => requestedPath.startsWith(dir));
+
+const serveStatic = async (request, response, pathname) => {
+  let requestedPath;
+
+  try {
+    requestedPath = path.posix.normalize(decodeURIComponent(pathname === "/" ? "/index.html" : pathname));
+  } catch (error) {
+    send(response, 400, "Bad request", { "Content-Type": "text/plain; charset=utf-8" });
+    return;
+  }
+
+  const absolutePath = path.join(ROOT, requestedPath);
+
+  if (!isPublicPath(requestedPath) || !absolutePath.startsWith(ROOT + path.sep)) {
     send(response, 404, "Not found", { "Content-Type": "text/plain; charset=utf-8" });
     return;
   }
