@@ -1131,24 +1131,24 @@ input[type="checkbox"] {
   color: var(--black);
 }
 
+.auth-wall-body {
+  display: grid;
+  gap: 32px;
+  justify-items: start;
+}
+
 .auth-wall-title {
-  position: relative;
-  z-index: 1;
   font-family: var(--font-display);
-  font-size: clamp(4rem, 8.6vw, 8.5rem);
-  line-height: 0.9;
+  font-size: clamp(3.5rem, 6vw, 6rem);
+  line-height: 0.92;
   text-transform: uppercase;
 }
 
 .auth-wall-logo {
-  position: absolute;
-  right: -60px;
-  bottom: -60px;
-  width: min(46vw, 420px);
+  width: clamp(112px, 11vw, 160px);
   height: auto;
   border-radius: 50%;
-  box-shadow: 0 0 0 8px var(--black);
-  opacity: 0.95;
+  box-shadow: 0 0 0 4px var(--black);
 }
 
 .auth-panel {
@@ -2444,14 +2444,13 @@ input[type="checkbox"] {
     gap: 24px;
   }
 
+
   .auth-wall-title {
-    font-size: clamp(2.8rem, 12vw, 4.5rem);
+    font-size: clamp(2.4rem, 10vw, 4rem);
   }
 
   .auth-wall-logo {
-    width: 170px;
-    right: -36px;
-    bottom: -48px;
+    display: none;
   }
 
   .auth-form-wrap {
