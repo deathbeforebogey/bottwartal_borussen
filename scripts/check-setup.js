@@ -19,7 +19,7 @@ loadEnvFile();
 const ROOT = path.join(__dirname, "..");
 const PORT = 3900 + Math.floor(Math.random() * 90);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-const TABLES = ["member_events", "site_content", "articles", "site_sections", "event_rsvps", "admin_audit_log"];
+const TABLES = ["member_events", "site_content", "articles", "site_sections", "event_rsvps", "admin_audit_log", "profiles"];
 
 let failures = 0;
 const ok = (message) => console.log(`  ✔ ${message}`);

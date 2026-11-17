@@ -2,41 +2,20 @@ const header = document.querySelector("[data-header]");
 const menuButton = document.querySelector("[data-menu-button]");
 const nav = document.querySelector("[data-nav]");
 const siteSections = document.querySelector("[data-site-sections]");
-const newsGrid = document.querySelector("[data-news-grid]");
-const nextMatchElements = {
-  home: document.querySelector("[data-next-home]"),
-  away: document.querySelector("[data-next-away]"),
-  competition: document.querySelector("[data-next-competition]"),
-  date: document.querySelector("[data-next-date]"),
-  time: document.querySelector("[data-next-time]"),
-  countdown: document.querySelector("[data-next-countdown]"),
-  source: document.querySelector("[data-next-source]"),
-};
+const newsList = document.querySelector("[data-news-list]");
 
-const BVB_TEAM_ID = 7;
-const OPENLIGADB_BASE_URL = "https://api.openligadb.de";
-const KNOWN_BVB_MATCHES = [
-  {
-    matchDateTime: "2026-08-15T17:30:00+02:00",
-    leagueName: "Saisoneröffnung",
-    group: { groupName: "Testspiel" },
-    team1: { shortName: "BVB" },
-    team2: { shortName: "AS Rom" },
-    source: "BVB-Spielplan",
-  },
-  {
-    matchDateTime: "2026-08-22T20:30:00+02:00",
-    leagueName: "Franz-Beckenbauer-Supercup",
-    group: { groupName: "Finale" },
-    team1: { shortName: "BVB" },
-    team2: { shortName: "FC Bayern" },
-    source: "DFL",
-  },
-];
+const escapeHtml = (value = "") =>
+  String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 
-const updateHeader = () => {
-  header.classList.toggle("is-scrolled", window.scrollY > 12);
-};
+// Nur Anker, interne Pfade, http(s) und mailto zulassen, keine javascript:-Links.
+const isSafeUrl = (url = "") => /^(#|\/(?![/\\])|https?:\/\/|mailto:)/i.test(String(url).trim());
+
+// --- Kopfzeile und mobiles Menü ---------------------------------------------------
 
 const setMenuOpen = (isOpen) => {
   header.classList.toggle("is-open", isOpen);
@@ -44,9 +23,7 @@ const setMenuOpen = (isOpen) => {
   menuButton.setAttribute("aria-label", isOpen ? "Navigation schließen" : "Navigation öffnen");
 };
 
-menuButton.addEventListener("click", () => {
-  setMenuOpen(!header.classList.contains("is-open"));
-});
+menuButton.addEventListener("click", () => setMenuOpen(!header.classList.contains("is-open")));
 nav.addEventListener("click", (event) => {
   if (event.target.closest("a")) setMenuOpen(false);
 });
@@ -61,185 +38,53 @@ document.addEventListener("click", (event) => {
 });
 window.matchMedia("(min-width: 921px)").addEventListener("change", () => setMenuOpen(false));
 
-const getBundesligaSeason = (date = new Date()) => {
-  const year = date.getFullYear();
-  const month = date.getMonth();
+const updateHeader = () => header.classList.toggle("is-scrolled", window.scrollY > 8);
+window.addEventListener("scroll", updateHeader, { passive: true });
+updateHeader();
 
-  return month >= 6 ? year : year - 1;
-};
-
-const formatDate = (date) =>
-  new Intl.DateTimeFormat("de-DE", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
-
-const formatTime = (date) =>
-  new Intl.DateTimeFormat("de-DE", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-
-const formatCountdown = (date) => {
-  const diff = date.getTime() - Date.now();
-
-  if (diff <= 0) {
-    return "läuft / vorbei";
-  }
-
-  const days = Math.floor(diff / 86400000);
-  const hours = Math.floor((diff % 86400000) / 3600000);
-
-  if (days > 0) {
-    return `${days} Tage ${hours} Std.`;
-  }
-
-  return `${hours} Std.`;
-};
-
-const getTeamName = (team) => team?.shortName || team?.teamName || "offen";
-
-const getMatchDate = (match) => {
-  const dateValue = match.matchDateTime || match.matchDate;
-  const date = new Date(dateValue);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const renderNextMatch = (match) => {
-  const kickoff = getMatchDate(match);
-  const homeName = getTeamName(match.team1);
-  const awayName = getTeamName(match.team2);
-
-  nextMatchElements.home.textContent = homeName;
-  nextMatchElements.away.textContent = awayName;
-  nextMatchElements.competition.textContent = `${match.leagueName} · ${match.group?.groupName || "Spieltag"}`;
-  nextMatchElements.date.textContent = formatDate(kickoff);
-  nextMatchElements.time.textContent = match.matchDateTime ? `${formatTime(kickoff)} Uhr` : "offen";
-  nextMatchElements.countdown.textContent = formatCountdown(kickoff);
-  nextMatchElements.source.textContent = match.source
-    ? `Termin laut ${match.source}; Bundesliga automatisch über OpenLigaDB`
-    : "Automatisch aktualisiert über OpenLigaDB";
-};
-
-const renderNoMatch = () => {
-  nextMatchElements.home.textContent = "BVB";
-  nextMatchElements.away.textContent = "wartet";
-  nextMatchElements.competition.textContent =
-    "Noch kein kommendes Bundesliga-Spiel veröffentlicht";
-  nextMatchElements.date.textContent = "offen";
-  nextMatchElements.time.textContent = "offen";
-  nextMatchElements.countdown.textContent = "Spielplan folgt";
-  nextMatchElements.source.textContent =
-    "Sobald OpenLigaDB neue BVB-Termine hat, erscheint hier automatisch das nächste Spiel.";
-};
-
-const loadNextBvbMatch = async () => {
-  const season = getBundesligaSeason();
-  const seasonsToCheck = [season, season + 1];
-
-  try {
-    const seasonResponses = await Promise.all(
-      seasonsToCheck.map((seasonYear) =>
-        fetch(`${OPENLIGADB_BASE_URL}/getmatchdata/bl1/${seasonYear}`, { signal: AbortSignal.timeout(8000) }).then((response) => {
-          if (!response.ok) {
-            throw new Error(`OpenLigaDB ${seasonYear}: ${response.status}`);
-          }
-
-          return response.json();
-        }).catch(() => null)
-      )
-    );
-
-    const now = Date.now();
-    const nextMatch = [...seasonResponses.filter(Boolean).flat(), ...KNOWN_BVB_MATCHES]
-      .filter(
-        (match) =>
-          match.source ||
-          match.team1?.teamId === BVB_TEAM_ID ||
-          match.team2?.teamId === BVB_TEAM_ID
-      )
-      .map((match) => ({ ...match, kickoff: getMatchDate(match)?.getTime() }))
-      .filter((match) => Number.isFinite(match.kickoff) && match.kickoff > now)
-      .sort((a, b) => a.kickoff - b.kickoff)[0];
-
-    if (nextMatch) {
-      renderNextMatch(nextMatch);
-    } else {
-      renderNoMatch();
-      if (seasonResponses.every((result) => result === null)) {
-        nextMatchElements.competition.textContent = "Spielplan gerade nicht erreichbar";
-        nextMatchElements.source.textContent = "Bitte lade die Seite später erneut, um das nächste Spiel zu sehen.";
-      }
-    }
-  } catch (error) {
-    renderNoMatch();
-    nextMatchElements.source.textContent =
-      "Live-Daten gerade nicht erreichbar. Bitte später neu laden.";
-  }
-};
+// --- Inhalte aus dem Adminbereich -------------------------------------------------
 
 const loadSiteContent = async () => {
   try {
     const response = await fetch("/api/site/content");
-
-    if (!response.ok) {
-      return;
-    }
+    if (!response.ok) return;
 
     const content = await response.json();
     document.querySelectorAll("[data-content-key]").forEach((element) => {
       const value = content[element.dataset.contentKey];
-
-      if (value) {
-        element.textContent = value;
-      }
+      if (value) element.textContent = value;
     });
   } catch (error) {
-    // Static fallback text remains visible.
+    // Die eingebauten Standardtexte bleiben stehen.
   }
 };
 
-const escapeHtml = (value = "") =>
-  String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-
-// Nur Anker, interne Pfade, http(s) und mailto zulassen, keine javascript:-Links.
-const isSafeUrl = (url = "") => /^(#|\/(?!\/)|https?:\/\/|mailto:)/i.test(String(url).trim());
-
 const renderSiteSections = (sections) => {
-  if (!siteSections || !sections.length) {
-    return;
-  }
+  if (!siteSections || !sections.length) return;
 
   siteSections.innerHTML = sections
     .map((section) => {
-      const type = ["highlight", "split", "compact"].includes(section.type)
-        ? section.type
-        : "highlight";
+      const type = ["highlight", "split", "compact"].includes(section.type) ? section.type : "highlight";
       const button =
         section.button_label && section.button_url && isSafeUrl(section.button_url)
-          ? `<a class="button primary" href="${escapeHtml(section.button_url)}">${escapeHtml(section.button_label)}</a>`
+          ? `<a class="button ${type === "highlight" ? "button-black" : "button-yellow"}" href="${escapeHtml(
+              section.button_url
+            )}">${escapeHtml(section.button_label)}</a>`
           : "";
 
       return `
-        <section class="builder-section builder-${type}">
-          <div>
-            ${section.eyebrow ? `<p class="eyebrow">${escapeHtml(section.eyebrow)}</p>` : ""}
-            <h2>${escapeHtml(section.title)}</h2>
+        <section class="builder builder-${type}">
+          <div class="builder-inner">
+            <div>
+              ${section.eyebrow ? `<p class="builder-tag">${escapeHtml(section.eyebrow)}</p>` : ""}
+              <h2>${escapeHtml(section.title)}</h2>
+            </div>
+            <div>
+              ${section.body ? `<p class="lead">${escapeHtml(section.body)}</p>` : ""}
+              ${button}
+            </div>
           </div>
-          <div>
-            <p>${escapeHtml(section.body)}</p>
-            ${button}
-          </div>
-        </section>
-      `;
+        </section>`;
     })
     .join("");
 };
@@ -247,40 +92,42 @@ const renderSiteSections = (sections) => {
 const loadSiteSections = async () => {
   try {
     const response = await fetch("/api/site/sections");
-
-    if (!response.ok) {
-      return;
-    }
-
+    if (!response.ok) return;
     renderSiteSections(await response.json());
   } catch (error) {
-    // Static sections remain visible.
+    // Ohne Blöcke bleibt die Seite vollständig.
   }
 };
 
+// --- Meldungen --------------------------------------------------------------------
+
 const formatArticleDate = (value) =>
-  new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
+  new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 
 const renderArticles = (articles) => {
   if (!articles.length) {
-    newsGrid.innerHTML = '<p class="news-empty">Gerade gibt es keine neuen Meldungen. Schau bald wieder vorbei.</p>';
+    newsList.innerHTML =
+      '<p class="news-empty">Gerade gibt es keine neuen Meldungen. Schau bald wieder vorbei.</p>';
     return;
   }
 
-  newsGrid.innerHTML = articles
+  newsList.innerHTML = articles
     .map(
       (article) => `
-        <article class="news-card">
+        <article class="news-item">
           <time datetime="${escapeHtml(article.created_at)}">${formatArticleDate(article.created_at)}</time>
-          <h3>${escapeHtml(article.title)}</h3>
-          <p>${escapeHtml(article.excerpt)}</p>
-          ${
-            article.body && article.body !== article.excerpt
-              ? `<details><summary>Weiterlesen</summary><p class="article-body">${escapeHtml(article.body)}</p></details>`
-              : ""
-          }
-        </article>
-      `
+          <div>
+            <h3>${escapeHtml(article.title)}</h3>
+            <p>${escapeHtml(article.excerpt)}</p>
+            ${
+              article.body && article.body !== article.excerpt
+                ? `<details class="more"><summary>Weiterlesen</summary><p class="article-body">${escapeHtml(
+                    article.body
+                  )}</p></details>`
+                : ""
+            }
+          </div>
+        </article>`
     )
     .join("");
 };
@@ -288,20 +135,13 @@ const renderArticles = (articles) => {
 const loadArticles = async () => {
   try {
     const response = await fetch("/api/site/articles");
-
-    if (!response.ok) {
-      throw new Error();
-    }
-
+    if (!response.ok) throw new Error();
     renderArticles(await response.json());
   } catch (error) {
-    newsGrid.innerHTML = '<p class="news-empty">Meldungen konnten gerade nicht geladen werden.</p>';
+    newsList.innerHTML = '<p class="news-empty">Meldungen konnten gerade nicht geladen werden.</p>';
   }
 };
 
-updateHeader();
 loadSiteContent();
 loadSiteSections();
 loadArticles();
-loadNextBvbMatch();
-window.addEventListener("scroll", updateHeader, { passive: true });

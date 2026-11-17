@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "source": "DESIGN.md",
+  "motion": {
+    "ease-out": "cubic-bezier(0.16, 1, 0.3, 1)",
+    "scoreboard-roll": "420ms ease-out, translateY(-55%) + blur(3px) -> none",
+    "hero-reveal": "900ms ease-out rise, second line +90ms, reduced-motion: off",
+    "state": "160-220ms"
+  },
+  "shadows": {
+    "lift": "0 2px 4px rgb(0 0 0 / 0.12), 0 24px 48px -16px rgb(0 0 0 / 0.45)"
+  },
+  "focus": "3px solid #ffe500, offset 3px; on yellow surfaces #000"
+}

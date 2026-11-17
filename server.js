@@ -31,27 +31,34 @@ const mimeTypes = {
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
 };
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+// Alles wird von der eigenen Domain geladen: keine Google-Fonts- oder Spielplan-Abrufe
+// aus dem Browser, damit keine IP-Adressen von Besuchern an Dritte gehen (DSGVO).
 const SECURITY_HEADERS = {
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self'",
-    "style-src 'self' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "style-src 'self'",
+    "font-src 'self'",
     "img-src 'self' data:",
-    "connect-src 'self' https://api.openligadb.de",
+    "connect-src 'self'",
+    "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
+    ...(IS_PRODUCTION ? ["upgrade-insecure-requests"] : []),
   ].join("; "),
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-  ...(process.env.NODE_ENV === "production"
-    ? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains" }
-    : {}),
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Resource-Policy": "same-origin",
+  ...(IS_PRODUCTION ? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains" } : {}),
 };
 
 const send = (response, status, body, headers = {}) => {
@@ -59,9 +66,11 @@ const send = (response, status, body, headers = {}) => {
   response.end(body);
 };
 
+// API-Antworten enthalten oft persönliche Daten: standardmäßig nicht zwischenspeichern.
 const sendJson = (response, status, data, headers = {}) => {
   send(response, status, JSON.stringify(data), {
     "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
     ...headers,
   });
 };
@@ -83,6 +92,11 @@ const MAX_BODY_BYTES = 100 * 1024;
 const httpError = (statusCode, message) => Object.assign(new Error(message), { statusCode });
 
 const readJsonBody = async (request) => {
+  // Nur echtes JSON annehmen: HTML-Formulare fremder Seiten können kein JSON senden.
+  if (!/^application\/json\b/i.test(request.headers["content-type"] || "")) {
+    throw httpError(415, "Ungültige Anfrage.");
+  }
+
   const chunks = [];
   let size = 0;
 
@@ -111,6 +125,12 @@ const readJsonBody = async (request) => {
 // Schreibende Anfragen nur von der eigenen Seite annehmen (Schutz vor CSRF).
 const isSameOrigin = (request) => {
   const origin = request.headers.origin;
+  const fetchSite = request.headers["sec-fetch-site"];
+
+  // Moderne Browser verraten, ob die Anfrage von einer fremden Seite stammt.
+  if (fetchSite && fetchSite !== "same-origin" && fetchSite !== "none") {
+    return false;
+  }
 
   if (!origin) {
     return true;
@@ -128,46 +148,90 @@ const RSVP_STATUSES = new Set(["yes", "maybe", "no"]);
 
 const getTodayInBerlin = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 
+// X-Forwarded-For kann jeder Client selbst setzen. Nur hinter einem eigenen Proxy
+// (TRUST_PROXY=1 beim Hoster) ist der Header vertrauenswürdig; sonst ließe sich die
+// Login-Sperre mit wechselnden Fantasie-IPs umgehen.
 const getClientIp = (request) =>
-  String(request.headers["x-forwarded-for"] || "").split(",")[0].trim() || request.socket.remoteAddress || "";
+  (process.env.TRUST_PROXY === "1" &&
+    String(request.headers["x-forwarded-for"] || "").split(",")[0].trim()) ||
+  request.socket.remoteAddress ||
+  "";
 
-// Einfache Sperre gegen Passwort-Raten: 10 Fehlversuche pro IP und E-Mail in 15 Minuten.
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const LOGIN_MAX_FAILURES = 10;
-const failedLogins = new Map();
+// Für Logs: "max.mustermann@web.de" -> "ma***@web.de"
+const maskEmail = (email = "") => String(email).replace(/^(.{0,2})[^@]*@/, "$1***@");
 
-const isLoginBlocked = (key) => {
-  const entry = failedLogins.get(key);
+// Zählt Fehlversuche je Schlüssel in einem Zeitfenster (Schutz gegen Passwort-Raten).
+const createLimiter = (maxFailures, windowMs = 15 * 60 * 1000) => {
+  const entries = new Map();
 
-  if (!entry || Date.now() - entry.firstAt > LOGIN_WINDOW_MS) {
-    failedLogins.delete(key);
-    return false;
-  }
+  const current = (key) => {
+    const entry = entries.get(key);
 
-  return entry.count >= LOGIN_MAX_FAILURES;
+    if (entry && Date.now() - entry.firstAt > windowMs) {
+      entries.delete(key);
+      return null;
+    }
+
+    return entry || null;
+  };
+
+  return {
+    isBlocked: (key) => (current(key)?.count || 0) >= maxFailures,
+    fail: (key) => {
+      // Alte Einträge gelegentlich aufräumen, damit die Liste nicht wächst.
+      if (entries.size > 5000) {
+        entries.forEach((value, mapKey) => {
+          if (Date.now() - value.firstAt > windowMs) entries.delete(mapKey);
+        });
+      }
+
+      const entry = current(key);
+
+      if (entry) {
+        entry.count += 1;
+      } else {
+        entries.set(key, { count: 1, firstAt: Date.now() });
+      }
+    },
+    clear: (key) => entries.delete(key),
+  };
 };
 
-const recordFailedLogin = (key) => {
-  // Alte Einträge gelegentlich aufräumen, damit die Liste nicht wächst.
-  if (failedLogins.size > 1000) {
-    failedLogins.forEach((value, mapKey) => {
-      if (Date.now() - value.firstAt > LOGIN_WINDOW_MS) failedLogins.delete(mapKey);
-    });
+// Login: 10 Fehlversuche je IP+Konto, 30 je IP (viele Konten durchprobieren),
+// 20 je Konto (verteilte Angriffe über viele IPs) in 15 Minuten.
+const loginByIpAndEmail = createLimiter(10);
+const loginByIp = createLimiter(30);
+const loginByEmail = createLimiter(20);
+const passwordChangeByUser = createLimiter(5);
+
+const PASSWORD_MIN_LENGTH = 10;
+const PASSWORD_MAX_LENGTH = 72;
+
+const validatePassword = (password) => {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return `Das Passwort braucht mindestens ${PASSWORD_MIN_LENGTH} Zeichen.`;
   }
 
-  const entry = failedLogins.get(key);
-
-  if (!entry || Date.now() - entry.firstAt > LOGIN_WINDOW_MS) {
-    failedLogins.set(key, { count: 1, firstAt: Date.now() });
-  } else {
-    entry.count += 1;
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    return `Das Passwort darf höchstens ${PASSWORD_MAX_LENGTH} Zeichen haben.`;
   }
+
+  return "";
 };
 
-const clearFailedLogins = (key) => failedLogins.delete(key);
+// Anzeigenamen: 2–40 Zeichen, keine Steuerzeichen.
+const cleanDisplayName = (value) =>
+  String(value || "")
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+
+// Nur Anker, interne Pfade, http(s) und mailto zulassen, keine javascript:-Links.
+const isSafeUrl = (url = "") => /^(#|\/(?![/\\])|https?:\/\/|mailto:)/i.test(String(url).trim());
 
 const setAuthCookies = (response, session) => {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  const secure = IS_PRODUCTION ? "; Secure" : "";
   response.setHeader("Set-Cookie", [
     `${ACCESS_COOKIE}=${encodeURIComponent(session.access_token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_MAX_AGE_SECONDS}${secure}`,
     `${REFRESH_COOKIE}=${encodeURIComponent(session.refresh_token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_MAX_AGE_SECONDS}${secure}`,
@@ -242,8 +306,16 @@ const requireAdmin = async (request, response) => {
   return { ...auth, admin };
 };
 
-const getBodyId = (body, pathname, prefix) =>
-  body.id || pathname.slice(prefix.length).replace(/^\//, "");
+// Die ID kommt immer aus der URL und muss eine UUID sein.
+const getPathId = (pathname, prefix) => {
+  const id = pathname.slice(prefix.length).replace(/^\//, "");
+
+  if (!UUID_PATTERN.test(id)) {
+    throw httpError(400, "Ungültige ID.");
+  }
+
+  return id;
+};
 
 const AUDIT_RESOURCES = {
   sections: "Startseiten-Block",
@@ -309,9 +381,25 @@ const handleAdminApi = async (request, response, pathname) => {
   return true;
 };
 
+// Details nur ins Server-Log; der Browser bekommt keine Datenbank-Interna zu sehen.
 const sendServerError = (response, error, context = "Datenbankfehler") => {
   log("error", context, { error: error.message, code: error.code });
-  sendJson(response, 500, { error: error.message });
+  const missingTable = error.code === "42P01" || error.code === "PGRST205";
+  sendJson(response, 500, {
+    error: missingTable
+      ? "Tabelle fehlt. Bitte supabase/setup.sql in Supabase ausführen."
+      : "Speichern oder Laden ist fehlgeschlagen. Details stehen im Server-Log.",
+  });
+};
+
+const validateSectionBody = (body) => {
+  if (!String(body.title || "").trim()) {
+    throw httpError(400, "Der Block braucht einen Titel.");
+  }
+
+  if (body.button_url && !isSafeUrl(body.button_url)) {
+    throw httpError(400, "Button-Link muss mit #, /, https:// oder mailto: beginnen.");
+  }
 };
 
 const routeAdminRequest = async (request, response, pathname, adminAuth) => {
@@ -365,6 +453,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
 
   if (pathname === "/api/admin/sections" && request.method === "POST") {
     const body = await readJsonBody(request);
+    validateSectionBody(body);
     const { data, error } = await admin
       .from("site_sections")
       .insert({
@@ -390,8 +479,9 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
   }
 
   if (pathname.startsWith("/api/admin/sections/") && request.method === "PUT") {
+    const id = getPathId(pathname, "/api/admin/sections");
     const body = await readJsonBody(request);
-    const id = getBodyId(body, pathname, "/api/admin/sections");
+    validateSectionBody(body);
     const { data, error } = await admin
       .from("site_sections")
       .update({
@@ -419,7 +509,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
   }
 
   if (pathname.startsWith("/api/admin/sections/") && request.method === "DELETE") {
-    const id = pathname.slice("/api/admin/sections/".length);
+    const id = getPathId(pathname, "/api/admin/sections");
     const { data: deleted, error } = await admin.from("site_sections").delete().eq("id", id).select("title");
     response.auditLabel = deleted?.[0]?.title;
 
@@ -496,7 +586,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
 
   if (pathname.startsWith("/api/admin/articles/") && request.method === "PUT") {
     const body = await readJsonBody(request);
-    const id = getBodyId(body, pathname, "/api/admin/articles");
+    const id = getPathId(pathname, "/api/admin/articles");
     const { data, error } = await admin
       .from("articles")
       .update({
@@ -520,7 +610,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
   }
 
   if (pathname.startsWith("/api/admin/articles/") && request.method === "DELETE") {
-    const id = pathname.slice("/api/admin/articles/".length);
+    const id = getPathId(pathname, "/api/admin/articles");
     const { data: deleted, error } = await admin.from("articles").delete().eq("id", id).select("title");
     response.auditLabel = deleted?.[0]?.title;
 
@@ -574,7 +664,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
 
   if (pathname.startsWith("/api/admin/events/") && request.method === "PUT") {
     const body = await readJsonBody(request);
-    const id = getBodyId(body, pathname, "/api/admin/events");
+    const id = getPathId(pathname, "/api/admin/events");
     const { data, error } = await admin
       .from("member_events")
       .update({
@@ -599,7 +689,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
   }
 
   if (pathname.startsWith("/api/admin/events/") && request.method === "DELETE") {
-    const id = pathname.slice("/api/admin/events/".length);
+    const id = getPathId(pathname, "/api/admin/events");
     const { data: deleted, error } = await admin.from("member_events").delete().eq("id", id).select("title");
     response.auditLabel = deleted?.[0]?.title;
 
@@ -638,11 +728,18 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
 
   if (pathname === "/api/admin/users" && request.method === "POST") {
     const body = await readJsonBody(request);
+    const passwordError = validatePassword(String(body.password || ""));
+
+    if (passwordError) {
+      sendJson(response, 400, { error: passwordError });
+      return true;
+    }
+
     const { data, error } = await admin.auth.admin.createUser({
       email: body.email,
       password: body.password,
       email_confirm: true,
-      user_metadata: { display_name: body.displayName || body.email },
+      user_metadata: { display_name: cleanDisplayName(body.displayName) || body.email },
       app_metadata: { role: body.role === "admin" ? "admin" : "member" },
     });
 
@@ -656,8 +753,17 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
   }
 
   if (pathname.startsWith("/api/admin/users/") && request.method === "PUT") {
+    const id = getPathId(pathname, "/api/admin/users");
     const body = await readJsonBody(request);
-    const id = getBodyId(body, pathname, "/api/admin/users");
+
+    if (body.password) {
+      const passwordError = validatePassword(String(body.password));
+
+      if (passwordError) {
+        sendJson(response, 400, { error: passwordError });
+        return true;
+      }
+    }
 
     if (id === currentUser.id && body.role && body.role !== "admin") {
       sendJson(response, 400, { error: "Du kannst dir die Admin-Rolle nicht selbst entziehen." });
@@ -685,7 +791,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
     if (Object.prototype.hasOwnProperty.call(body, "displayName")) {
       updates.user_metadata = {
         ...(existingUser.user_metadata || {}),
-        display_name: String(body.displayName || "").trim() || body.email || existingUser.email,
+        display_name: cleanDisplayName(body.displayName) || body.email || existingUser.email,
       };
     }
 
@@ -694,6 +800,11 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
     if (error) {
       sendServerError(response, error);
       return true;
+    }
+
+    // Mitgliederliste und Zusagen zeigen den neuen Namen ebenfalls.
+    if (updates.user_metadata?.display_name) {
+      await syncDisplayName(admin, id, updates.user_metadata.display_name);
     }
 
     sendJson(response, 200, {
@@ -706,7 +817,7 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
   }
 
   if (pathname.startsWith("/api/admin/users/") && request.method === "DELETE") {
-    const id = pathname.slice("/api/admin/users/".length);
+    const id = getPathId(pathname, "/api/admin/users");
 
     if (id === currentUser.id) {
       sendJson(response, 400, { error: "Du kannst dein eigenes Konto nicht löschen." });
@@ -728,6 +839,90 @@ const routeAdminRequest = async (request, response, pathname, adminAuth) => {
 
   sendJson(response, 404, { error: "Admin-Endpunkt nicht gefunden" });
   return true;
+};
+
+// Name in Profil und bisherigen Zusagen nachziehen. Fehlt die Tabelle noch, nur loggen.
+const syncDisplayName = async (client, userId, displayName) => {
+  const results = await Promise.all([
+    client.from("profiles").update({ display_name: displayName, updated_at: new Date().toISOString() }).eq("id", userId),
+    client.from("event_rsvps").update({ display_name: displayName }).eq("user_id", userId),
+  ]);
+
+  results.forEach(({ error }) => {
+    if (error) log("warn", "Anzeigename konnte nicht überall aktualisiert werden", { error: error.message });
+  });
+};
+
+// Nächstes BVB-Spiel serverseitig von OpenLigaDB holen und 10 Minuten zwischenspeichern.
+// So sieht OpenLigaDB nie die IP-Adressen der Besucher.
+const BVB_TEAM_ID = 7;
+const NEXT_MATCH_TTL_MS = 10 * 60 * 1000;
+let nextMatchCache = { at: 0, value: null };
+
+const getBundesligaSeason = (date = new Date()) =>
+  date.getMonth() >= 6 ? date.getFullYear() : date.getFullYear() - 1;
+
+const fetchSeason = async (season) => {
+  const response = await fetch(`https://api.openligadb.de/getmatchdata/bl1/${season}`, {
+    signal: AbortSignal.timeout(8000),
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`OpenLigaDB ${season}: ${response.status}`);
+  }
+
+  return response.json();
+};
+
+const loadNextMatch = async () => {
+  if (nextMatchCache.value && Date.now() - nextMatchCache.at < NEXT_MATCH_TTL_MS) {
+    return nextMatchCache.value;
+  }
+
+  const season = getBundesligaSeason();
+  const seasons = await Promise.allSettled([fetchSeason(season), fetchSeason(season + 1)]);
+  const matches = seasons.filter((result) => result.status === "fulfilled").flatMap((result) => result.value || []);
+
+  if (!matches.length) {
+    // Lieber einen etwas älteren Stand zeigen als gar keinen.
+    if (nextMatchCache.value) return nextMatchCache.value;
+    throw new Error("Spielplan nicht erreichbar");
+  }
+
+  const now = Date.now();
+  const next = matches
+    .filter((match) => match.team1?.teamId === BVB_TEAM_ID || match.team2?.teamId === BVB_TEAM_ID)
+    .map((match) => ({ match, kickoff: new Date(match.matchDateTimeUTC || match.matchDateTime).getTime() }))
+    .filter(({ kickoff }) => Number.isFinite(kickoff) && kickoff > now - 2 * 60 * 60 * 1000)
+    .sort((a, b) => a.kickoff - b.kickoff)[0];
+
+  const teamName = (team) => String(team?.shortName || team?.teamName || "offen").slice(0, 40);
+  const value = next
+    ? {
+        home: teamName(next.match.team1),
+        away: teamName(next.match.team2),
+        bvbAtHome: next.match.team1?.teamId === BVB_TEAM_ID,
+        kickoff: new Date(next.kickoff).toISOString(),
+        competition: String(next.match.leagueName || "Bundesliga").slice(0, 80),
+        round: String(next.match.group?.groupName || "").slice(0, 40),
+        venue: String(next.match.location?.locationCity || next.match.location?.locationStadium || "").slice(0, 60),
+      }
+    : null;
+
+  nextMatchCache = { at: Date.now(), value: { match: value } };
+  return nextMatchCache.value;
+};
+
+const requireMember = async (request, response) => {
+  const auth = await getSupabaseForRequest(request, response);
+
+  if (!auth.user) {
+    sendJson(response, 401, { error: "Nicht eingeloggt" });
+    return null;
+  }
+
+  return auth;
 };
 
 const handleApi = async (request, response, pathname) => {
@@ -770,6 +965,7 @@ const handleApi = async (request, response, pathname) => {
             email: user.email,
             displayName: user.user_metadata?.display_name || user.email,
             isAdmin: isAdminUser(user),
+            memberSince: user.created_at,
           }
         : null,
     });
@@ -835,8 +1031,13 @@ const handleApi = async (request, response, pathname) => {
     const ip = getClientIp(request);
     const limitKey = `${ip}|${email}`;
 
-    if (isLoginBlocked(limitKey)) {
-      log("warn", "Login gesperrt (zu viele Fehlversuche)", { email, ip });
+    if (!email || !password || email.length > 254 || password.length > 200) {
+      sendJson(response, 400, { error: "Bitte E-Mail und Passwort eingeben." });
+      return true;
+    }
+
+    if (loginByIpAndEmail.isBlocked(limitKey) || loginByIp.isBlocked(ip) || loginByEmail.isBlocked(email)) {
+      log("warn", "Login gesperrt (zu viele Fehlversuche)", { email: maskEmail(email), ip });
       sendJson(response, 429, {
         error: "Zu viele Fehlversuche. Bitte warte 15 Minuten und versuche es dann erneut.",
       });
@@ -862,13 +1063,15 @@ const handleApi = async (request, response, pathname) => {
     }
 
     if (error || !data.session) {
-      recordFailedLogin(limitKey);
-      log("warn", "Login abgelehnt", { email, ip, reason: error?.message });
+      loginByIpAndEmail.fail(limitKey);
+      loginByIp.fail(ip);
+      loginByEmail.fail(email);
+      log("warn", "Login abgelehnt", { email: maskEmail(email), ip, reason: error?.message });
       sendJson(response, 401, { error: "E-Mail oder Passwort ist falsch." });
       return true;
     }
 
-    clearFailedLogins(limitKey);
+    loginByIpAndEmail.clear(limitKey);
     setAuthCookies(response, data.session);
     log("info", "Login erfolgreich", { user: data.user.id.slice(0, 8) });
     sendJson(response, 200, { authenticated: true });
@@ -995,6 +1198,135 @@ const handleApi = async (request, response, pathname) => {
     return true;
   }
 
+  if (pathname === "/api/site/next-match" && request.method === "GET") {
+    try {
+      sendJson(response, 200, await loadNextMatch(), { "Cache-Control": "public, max-age=300" });
+    } catch (error) {
+      log("warn", "Nächstes Spiel nicht verfügbar", { error: error.message });
+      sendJson(response, 503, { error: "Spielplan gerade nicht erreichbar." });
+    }
+    return true;
+  }
+
+  // Mitgliederliste: nur Anzeigename und Beitrittsdatum, keine E-Mail-Adressen.
+  if (pathname === "/api/member/roster" && request.method === "GET") {
+    const auth = await requireMember(request, response);
+    if (!auth) return true;
+
+    const { data, error } = await auth.supabase
+      .from("profiles")
+      .select("id, display_name, created_at")
+      .order("display_name", { ascending: true });
+
+    if (error) {
+      log("error", "Mitgliederliste konnte nicht geladen werden", { error: error.message });
+      sendJson(response, 503, { error: "Die Mitgliederliste ist noch nicht eingerichtet." });
+      return true;
+    }
+
+    sendJson(
+      response,
+      200,
+      data.map((profile) => ({
+        name: profile.display_name,
+        memberSince: profile.created_at,
+        isMe: profile.id === auth.user.id,
+      }))
+    );
+    return true;
+  }
+
+  if (pathname === "/api/member/profile" && request.method === "PUT") {
+    const auth = await requireMember(request, response);
+    if (!auth) return true;
+
+    const body = await readJsonBody(request);
+    const displayName = cleanDisplayName(body.displayName);
+
+    if (displayName.length < 2) {
+      sendJson(response, 400, { error: "Der Anzeigename braucht mindestens 2 Zeichen." });
+      return true;
+    }
+
+    const { error } = await auth.supabase.auth.updateUser({ data: { display_name: displayName } });
+
+    if (error) {
+      log("error", "Profil konnte nicht gespeichert werden", { error: error.message });
+      sendJson(response, 500, { error: "Profil konnte nicht gespeichert werden." });
+      return true;
+    }
+
+    // Mit der Session des Mitglieds: RLS erlaubt nur die eigenen Zeilen.
+    await syncDisplayName(auth.supabase, auth.user.id, displayName);
+    log("info", "Profil geändert", { user: auth.user.id.slice(0, 8) });
+    sendJson(response, 200, { displayName });
+    return true;
+  }
+
+  if (pathname === "/api/member/password" && request.method === "PUT") {
+    const auth = await requireMember(request, response);
+    if (!auth) return true;
+
+    const userKey = auth.user.id;
+
+    if (passwordChangeByUser.isBlocked(userKey)) {
+      sendJson(response, 429, { error: "Zu viele Versuche. Bitte warte 15 Minuten." });
+      return true;
+    }
+
+    const body = await readJsonBody(request);
+    const currentPassword = String(body.currentPassword || "");
+    const newPassword = String(body.newPassword || "");
+    const passwordError = validatePassword(newPassword);
+
+    if (passwordError) {
+      sendJson(response, 400, { error: passwordError });
+      return true;
+    }
+
+    if (newPassword === currentPassword) {
+      sendJson(response, 400, { error: "Das neue Passwort muss sich vom alten unterscheiden." });
+      return true;
+    }
+
+    // Altes Passwort bestätigen lassen: Ein offen gelassenes Gerät reicht nicht zum Kontoübernehmen.
+    const verifier = createSupabaseClient();
+    const { error: verifyError } = await verifier.auth.signInWithPassword({
+      email: auth.user.email,
+      password: currentPassword,
+    });
+
+    if (isSupabaseUnavailable(verifyError)) {
+      throw httpError(503, SUPABASE_UNAVAILABLE_MESSAGE);
+    }
+
+    if (verifyError) {
+      passwordChangeByUser.fail(userKey);
+      sendJson(response, 400, { error: "Das aktuelle Passwort stimmt nicht." });
+      return true;
+    }
+
+    const { error } = await auth.supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      log("error", "Passwort konnte nicht geändert werden", { error: error.message });
+      sendJson(response, 500, { error: "Passwort konnte nicht geändert werden." });
+      return true;
+    }
+
+    // Alle anderen Geräte abmelden (auch die eben zur Prüfung erzeugte Sitzung).
+    const { error: signOutError } = await auth.supabase.auth.signOut({ scope: "others" });
+
+    if (signOutError) {
+      log("warn", "Andere Sitzungen konnten nicht beendet werden", { error: signOutError.message });
+    }
+
+    passwordChangeByUser.clear(userKey);
+    log("info", "Passwort geändert", { user: auth.user.id.slice(0, 8) });
+    sendJson(response, 200, { ok: true });
+    return true;
+  }
+
   if (pathname.startsWith("/api/")) {
     sendJson(response, 404, { error: "API-Endpunkt nicht gefunden" });
     return true;
@@ -1011,8 +1343,9 @@ const PUBLIC_FILES = new Set([
   "/admin.html",
   "/impressum.html",
   "/datenschutz.html",
-  "/styles.css",
-  "/design.css",
+  "/404.html",
+  "/app.css",
+  "/scoreboard.js",
   "/script.js",
   "/auth.js",
   "/members.js",
@@ -1036,7 +1369,7 @@ const serveStatic = async (request, response, pathname) => {
   const absolutePath = path.join(ROOT, requestedPath);
 
   if (!isPublicPath(requestedPath) || !absolutePath.startsWith(ROOT + path.sep)) {
-    send(response, 404, "Not found", { "Content-Type": "text/plain; charset=utf-8" });
+    await sendNotFound(response);
     return;
   }
 
@@ -1045,7 +1378,7 @@ const serveStatic = async (request, response, pathname) => {
 
     if (user && (requestedPath === "/members.html" || isAdminUser(user))) {
       const file = await fs.readFile(absolutePath);
-      send(response, 200, file, { "Content-Type": "text/html; charset=utf-8" });
+      send(response, 200, file, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       return;
     }
 
@@ -1055,8 +1388,22 @@ const serveStatic = async (request, response, pathname) => {
 
   try {
     const file = await fs.readFile(absolutePath);
-    const contentType = mimeTypes[path.extname(absolutePath)] || "application/octet-stream";
-    send(response, 200, file, { "Content-Type": contentType });
+    const extension = path.extname(absolutePath);
+    const contentType = mimeTypes[extension] || "application/octet-stream";
+    // Schriften und Bilder ändern sich praktisch nie; HTML, CSS und JS immer neu prüfen.
+    const cacheControl = [".woff2", ".jpeg", ".jpg", ".png", ".svg", ".ico"].includes(extension)
+      ? "public, max-age=604800"
+      : "no-cache";
+    send(response, 200, file, { "Content-Type": contentType, "Cache-Control": cacheControl });
+  } catch (error) {
+    await sendNotFound(response);
+  }
+};
+
+const sendNotFound = async (response) => {
+  try {
+    const page = await fs.readFile(path.join(ROOT, "404.html"));
+    send(response, 404, page, { "Content-Type": "text/html; charset=utf-8" });
   } catch (error) {
     send(response, 404, "Not found", { "Content-Type": "text/plain; charset=utf-8" });
   }

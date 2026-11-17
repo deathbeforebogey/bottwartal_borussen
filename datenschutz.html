@@ -6,32 +6,24 @@
     <link rel="icon" type="image/jpeg" href="/assets/fanclub-logo.jpeg" />
     <link rel="apple-touch-icon" href="/assets/fanclub-logo.jpeg" />
     <title>Datenschutz | Bottwartal Borussen</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="design.css" />
+    <link rel="stylesheet" href="/app.css" />
   </head>
-  <body class="legal-page">
-    <header class="auth-header">
+  <body class="page-legal">
+    <header class="site-header site-header-simple">
       <a class="brand" href="/">
-        <img src="/assets/fanclub-logo.jpeg" alt="" />
-        <span>
+        <img src="/assets/fanclub-logo.jpeg" alt="" width="44" height="44" />
+        <span class="brand-text">
           <strong>Bottwartal Borussen</strong>
-          <small>Offizieller BVB-Fanclub</small>
+          <small>BVB-Fanclub</small>
         </span>
       </a>
-      <a class="button ghost" href="/">Zur Startseite</a>
+      <a class="button button-small button-ghost-dark" href="/">Zur Startseite</a>
     </header>
 
     <main class="legal-main">
-      <p class="eyebrow">Rechtliches</p>
       <h1>Datenschutz</h1>
 
-      <section class="legal-card">
+      <section class="legal-section">
         <h2>1. Verantwortlicher</h2>
         <p>
           Bottwartal Borussen<br />
@@ -43,7 +35,7 @@
         </p>
       </section>
 
-      <section class="legal-card">
+      <section class="legal-section">
         <h2>2. Zugriffsdaten</h2>
         <p>
           Beim Aufruf dieser Website können technische Zugriffsdaten verarbeitet werden, zum
@@ -52,7 +44,7 @@
         </p>
       </section>
 
-      <section class="legal-card">
+      <section class="legal-section">
         <h2>3. Kontaktaufnahme</h2>
         <p>
           Wenn du uns per E-Mail kontaktierst, verarbeiten wir deine Angaben zur Bearbeitung deiner
@@ -60,24 +52,38 @@
         </p>
       </section>
 
-      <section class="legal-card">
+      <section class="legal-section">
         <h2>4. Mitgliederbereich</h2>
         <p>
           Für den Mitgliederbereich nutzen wir Supabase zur Authentifizierung. Dabei werden
-          insbesondere E-Mail-Adresse, Login-Status und technische Sitzungsdaten verarbeitet.
-          Die Verarbeitung erfolgt zur Bereitstellung des geschützten Mitgliederbereichs.
+          insbesondere E-Mail-Adresse, Anzeigename, Login-Status, Zu- und Absagen zu Terminen
+          sowie technische Sitzungsdaten verarbeitet. Die Verarbeitung erfolgt zur Bereitstellung
+          des geschützten Mitgliederbereichs. Andere Mitglieder sehen nur deinen Anzeigenamen,
+          dein Beitrittsdatum und deine Antworten zu Terminen, nicht deine E-Mail-Adresse.
+        </p>
+        <p>
+          Nach der Anmeldung setzen wir zwei technisch notwendige Cookies, die deine Sitzung
+          speichern. Tracking- oder Werbe-Cookies verwenden wir nicht.
         </p>
       </section>
 
-      <section class="legal-card">
+      <section class="legal-section">
         <h2>5. Externe Dienste</h2>
         <p>
-          Die Website kann auf externe Dienste verlinken, zum Beispiel Kicktipp. Beim Öffnen
-          externer Links gelten die Datenschutzbestimmungen des jeweiligen Anbieters.
+          Schriftarten liegen auf unserem eigenen Server; beim Aufruf der Seite werden keine
+          Daten an Google oder andere Schriftanbieter übertragen.
+        </p>
+        <p>
+          Die Angaben zum nächsten BVB-Spiel ruft unser Server bei OpenLigaDB ab. Dein Browser
+          stellt dabei keine Verbindung zu OpenLigaDB her.
+        </p>
+        <p>
+          Die Website verlinkt auf externe Dienste, zum Beispiel Kicktipp. Beim Öffnen externer
+          Links gelten die Datenschutzbestimmungen des jeweiligen Anbieters.
         </p>
       </section>
 
-      <section class="legal-card">
+      <section class="legal-section">
         <h2>6. Deine Rechte</h2>
         <p>
           Du hast im Rahmen der gesetzlichen Vorgaben Rechte auf Auskunft, Berichtigung, Löschung,
@@ -86,7 +92,7 @@
         </p>
       </section>
 
-      <section class="legal-card">
+      <section class="legal-section">
         <h2>Hinweis</h2>
         <p>
           Diese Datenschutzerklärung ist eine vorbereitete Vorlage und sollte vor Veröffentlichung

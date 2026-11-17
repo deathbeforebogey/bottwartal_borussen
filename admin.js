@@ -20,9 +20,9 @@ const escapeHtml = (value = "") =>
 
 const api = async (url, options = {}) => {
   const response = await fetch(url, {
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options,
+    credentials: "same-origin",
+    headers: options.body ? { "Content-Type": "application/json" } : undefined,
   });
 
   const text = await response.text();
@@ -41,8 +41,17 @@ const api = async (url, options = {}) => {
   return data;
 };
 
-const setStatus = (message) => {
+const toastNode = document.querySelector("[data-toast]");
+let toastTimer;
+
+const setStatus = (message, { quiet = false } = {}) => {
   statusNode.textContent = message;
+  if (quiet) return;
+  toastNode.textContent = message;
+  toastNode.classList.add("is-visible");
+  toastNode.classList.toggle("is-error", message.startsWith("Fehler"));
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toastNode.classList.remove("is-visible"), 3200);
 };
 
 // Führt eine Admin-Aktion aus und zeigt Erfolg oder Fehler im Status an.
@@ -100,7 +109,7 @@ const loadContent = async () => {
       `
     )
     .join("");
-  contentForm.insertAdjacentHTML("beforeend", '<button class="button primary" type="submit">Texte speichern</button>');
+  contentForm.insertAdjacentHTML("beforeend", '<button class="button button-yellow" type="submit">Texte speichern</button>');
 };
 
 const loadSections = async () => {
@@ -418,7 +427,7 @@ const initAdmin = async () => {
   }
 
   const failed = results.filter((result) => result.status === "rejected").length;
-  setStatus(failed ? `${failed} Bereich(e) brauchen noch Supabase-Setup.` : "Adminbereich bereit.");
+  setStatus(failed ? `${failed} Bereich(e) brauchen noch Supabase-Setup.` : "Adminbereich bereit.", { quiet: !failed });
 };
 
 initAdmin();

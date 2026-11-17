@@ -118,6 +118,64 @@ using (user_id = auth.uid()) with check (user_id = auth.uid());
 create policy "Members can remove own rsvp"
 on public.event_rsvps for delete to authenticated using (user_id = auth.uid());
 
+-- Profile für Mitgliederliste und Profilseite: nur Anzeigename und Beitrittsdatum,
+-- keine E-Mail-Adressen. Mitglieder sehen alle Profile, ändern aber nur ihr eigenes.
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  display_name text not null check (char_length(display_name) between 1 and 60),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+drop policy if exists "Members can read profiles" on public.profiles;
+drop policy if exists "Members can change own profile" on public.profiles;
+
+create policy "Members can read profiles"
+on public.profiles for select to authenticated using (true);
+
+-- Nur der Anzeigename darf geändert werden; id und Beitrittsdatum bleiben fest.
+create policy "Members can change own profile"
+on public.profiles for update to authenticated
+using (id = auth.uid()) with check (id = auth.uid());
+
+revoke update on public.profiles from authenticated;
+grant update (display_name, updated_at) on public.profiles to authenticated;
+
+-- Neue Konten bekommen automatisch ein Profil.
+create or replace function public.handle_new_member()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, display_name, created_at)
+  values (
+    new.id,
+    left(coalesce(nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''), split_part(new.email, '@', 1)), 60),
+    new.created_at
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_member();
+
+-- Bestehende Konten nachtragen.
+insert into public.profiles (id, display_name, created_at)
+select
+  id,
+  left(coalesce(nullif(trim(raw_user_meta_data ->> 'display_name'), ''), split_part(email, '@', 1)), 60),
+  created_at
+from auth.users
+on conflict (id) do nothing;
+
 -- Standardtexte der Startseite (entsprechen dem Text in index.html)
 insert into public.site_content (key, label, value)
 values

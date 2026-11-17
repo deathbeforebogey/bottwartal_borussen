@@ -3,74 +3,71 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#ffe500" />
     <link rel="icon" type="image/jpeg" href="/assets/fanclub-logo.jpeg" />
     <link rel="apple-touch-icon" href="/assets/fanclub-logo.jpeg" />
-    <title>Mitglieder Login | Bottwartal Borussen</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="design.css" />
+    <link rel="preload" href="/assets/fonts/anton.woff2" as="font" type="font/woff2" crossorigin />
+    <title>Anmelden | Bottwartal Borussen</title>
+    <link rel="stylesheet" href="/app.css" />
   </head>
-  <body class="auth-page">
-    <header class="auth-header">
-      <a class="brand" href="/">
-        <img src="/assets/fanclub-logo.jpeg" alt="" />
-        <span>
-          <strong>Bottwartal Borussen</strong>
-          <small>Offizieller BVB-Fanclub</small>
-        </span>
-      </a>
-      <a class="button ghost" href="/">Zur Startseite</a>
-    </header>
-
-    <main class="auth-shell">
-      <section class="auth-hero-brand" aria-label="Bottwartal Borussen">
-        <img src="/assets/fanclub-logo.jpeg" alt="Logo der Bottwartal Borussen" />
-        <div>
-          <p>Offizieller BVB-Fanclub</p>
-          <h2>Bottwartal Borussen</h2>
-        </div>
+  <body class="page-auth">
+    <main class="auth">
+      <section class="auth-wall" aria-hidden="true">
+        <a class="brand brand-dark" href="/" tabindex="-1">
+          <img src="/assets/fanclub-logo.jpeg" alt="" width="44" height="44" />
+          <span class="brand-text"><strong>Bottwartal Borussen</strong><small>BVB-Fanclub</small></span>
+        </a>
+        <p class="auth-wall-title">Nur für<br />Mitglieder.</p>
+        <img class="auth-wall-logo" src="/assets/fanclub-logo.jpeg" alt="" width="320" height="320" />
       </section>
 
-      <section class="auth-panel">
-        <p class="eyebrow">Mitgliederbereich</p>
-        <h1>Login</h1>
-        <p>
-          Melde dich mit deinem Mitgliedskonto an, um unsere Termine, Fahrten
-          und internen Fanclub-Infos zu sehen.
-        </p>
+      <section class="auth-panel" aria-labelledby="login-title">
+        <a class="back-link" href="/">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18.75 8.25 12 15 5.25" /></svg>
+          Zur Startseite
+        </a>
 
-        <form class="auth-form" data-login-form>
-          <label for="email">E-Mail</label>
-          <input id="email" name="email" type="email" autocomplete="email" required />
+        <div class="auth-form-wrap">
+          <h1 id="login-title">Anmelden</h1>
+          <p class="muted">
+            Mit deinem Mitgliedskonto siehst du Termine, sagst zu und sprichst Mitfahrten ab.
+          </p>
 
-          <label for="password">Passwort</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            required
-          />
+          <form class="form" data-login-form novalidate>
+            <div class="field">
+              <label for="email">E-Mail</label>
+              <input id="email" name="email" type="email" autocomplete="username" inputmode="email" required />
+            </div>
 
-          <button class="button primary" type="submit">Einloggen</button>
-          <p class="auth-message" data-auth-message role="status" aria-live="polite"></p>
-        </form>
+            <div class="field">
+              <label for="password">Passwort</label>
+              <div class="password-field">
+                <input id="password" name="password" type="password" autocomplete="current-password" required />
+                <button class="reveal" type="button" data-reveal="password" aria-label="Passwort anzeigen" aria-pressed="false">
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.25 12S5.25 5.25 12 5.25 21.75 12 21.75 12 18.75 18.75 12 18.75 2.25 12 2.25 12Z" /><circle cx="12" cy="12" r="3" /></svg>
+                </button>
+              </div>
+              <p class="hint" data-caps-hint hidden>Die Feststelltaste ist aktiv.</p>
+            </div>
+
+            <p class="form-message is-error" data-auth-message role="alert"></p>
+            <button class="button button-yellow button-block" type="submit">Anmelden</button>
+          </form>
+
+          <p class="auth-help muted">
+            Noch kein Konto oder Passwort vergessen? Schreib uns an
+            <a href="mailto:bottwartal.borussen09@web.de">bottwartal.borussen09@web.de</a>.
+          </p>
+        </div>
+
+        <footer class="auth-footer">
+          <a href="/impressum.html">Impressum</a>
+          <a href="/datenschutz.html">Datenschutz</a>
+        </footer>
       </section>
     </main>
 
-    <footer class="site-footer">
-      <span>© 2026 Bottwartal Borussen</span>
-      <nav aria-label="Footer">
-        <a href="/impressum.html">Impressum</a>
-        <a href="/datenschutz.html">Datenschutz</a>
-      </nav>
-    </footer>
-
-    <script src="auth.js"></script>
+    <script src="/auth.js" defer></script>
   </body>
 </html>

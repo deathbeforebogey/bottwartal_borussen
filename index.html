@@ -5,195 +5,184 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Bottwartal Borussen - der schwarzgelbe BVB Fanclub aus dem Bottwartal. Termine, Fahrten, Spieltage und Kontakt."
+      content="Bottwartal Borussen – der schwarzgelbe BVB-Fanclub aus dem Bottwartal. Nächstes BVB-Spiel, Neuigkeiten und Kontakt."
     />
+    <meta name="theme-color" content="#ffe500" />
+    <meta property="og:title" content="Bottwartal Borussen | BVB-Fanclub" />
+    <meta property="og:description" content="Der schwarzgelbe BVB-Fanclub aus dem Bottwartal." />
+    <meta property="og:image" content="/assets/fanclub-logo.jpeg" />
     <link rel="icon" type="image/jpeg" href="/assets/fanclub-logo.jpeg" />
     <link rel="apple-touch-icon" href="/assets/fanclub-logo.jpeg" />
-    <title>Bottwartal Borussen | BVB Fanclub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700;800;900&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="design.css" />
+    <link rel="preload" href="/assets/fonts/anton.woff2" as="font" type="font/woff2" crossorigin />
+    <title>Bottwartal Borussen | BVB-Fanclub</title>
+    <link rel="stylesheet" href="/app.css" />
   </head>
-  <body class="home-page">
-    <a class="skip-link" href="#main-content">Zum Inhalt</a>
+  <body class="page-home">
+    <a class="skip-link" href="#inhalt">Zum Inhalt</a>
+
     <header class="site-header" data-header>
-      <a class="brand" href="#main-content" aria-label="Bottwartal Borussen Startseite">
-        <img src="/assets/fanclub-logo.jpeg" alt="" />
-        <span>
+      <a class="brand" href="/" aria-label="Bottwartal Borussen – Startseite">
+        <img src="/assets/fanclub-logo.jpeg" alt="" width="44" height="44" />
+        <span class="brand-text">
           <strong>Bottwartal Borussen</strong>
-          <small>Offizieller BVB-Fanclub</small>
+          <small>BVB-Fanclub</small>
         </span>
       </a>
 
-      <button class="menu-button" type="button" data-menu-button aria-label="Navigation öffnen" aria-expanded="false" aria-controls="main-nav">
-        <span></span>
-        <span></span>
+      <button
+        class="menu-button"
+        type="button"
+        data-menu-button
+        aria-label="Navigation öffnen"
+        aria-expanded="false"
+        aria-controls="hauptnavigation"
+      >
+        <span></span><span></span>
       </button>
 
-      <nav id="main-nav" class="site-nav" data-nav aria-label="Hauptnavigation">
+      <nav id="hauptnavigation" class="site-nav" data-nav aria-label="Hauptnavigation">
         <a href="#fanclub">Fanclub</a>
-        <a href="#termine">Termine</a>
+        <a href="#intern">Für Mitglieder</a>
         <a href="#aktuelles">Aktuelles</a>
-        <a href="#mitglied">Mitglied werden</a>
-        <a class="nav-icon-link" href="/login.html" aria-label="Login" title="Login">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
+        <a href="/login.html" class="nav-login">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="icon">
             <path d="M12 12.25a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z" />
             <path d="M4.25 20.25c.74-3.45 3.75-5.75 7.75-5.75s7.01 2.3 7.75 5.75" />
           </svg>
+          Login
         </a>
-        <a class="nav-cta" href="#mitglied">Kontakt</a>
+        <a class="button button-yellow nav-cta" href="#mitglied">Mitglied werden</a>
       </nav>
     </header>
 
-    <main id="main-content">
+    <main id="inhalt">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-copyblock reveal">
-          <p class="eyebrow" data-content-key="hero_eyebrow">Offizieller BVB-Fanclub aus dem Bottwartal</p>
-          <h1 id="hero-title">
-            <span data-content-key="hero_title_top">Bottwartal</span>
-            <span data-content-key="hero_title_bottom">Borussen</span>
+        <div class="hero-copy">
+          <h1 id="hero-title" class="hero-title">
+            <span class="hero-line"><span data-content-key="hero_title_top">Bottwartal</span></span>
+            <span class="hero-line"><span data-content-key="hero_title_bottom">Borussen</span></span>
           </h1>
           <p class="hero-lead" data-content-key="hero_lead">
-            Unser Zuhause ist das Bottwartal. Unser Verein ist Borussia Dortmund.
-            Hier findest du unsere Treffpunkte, Termine und gemeinsamen Fahrten.
+            Unser Zuhause ist das Bottwartal. Unser Verein ist Borussia Dortmund. Hier findest du unsere
+            Treffpunkte, Termine und gemeinsamen Fahrten.
           </p>
-          <div class="hero-actions">
-            <a class="button primary" href="#termine">Zu den Fanclub-Terminen</a>
-            <a class="button ghost" href="#fanclub">Fanclub entdecken</a>
+          <div class="actions">
+            <a class="button button-black" href="#mitglied">Mitglied werden</a>
+            <a class="button button-outline" href="#fanclub">Fanclub kennenlernen</a>
           </div>
         </div>
 
         <div class="hero-side">
-        <img class="hero-emblem" src="/assets/fanclub-logo.jpeg" alt="Vereinszeichen der Bottwartal Borussen" width="640" height="640" />
-        <aside class="match-card" aria-live="polite" aria-label="Nächstes BVB-Spiel">
-          <p>Nächstes BVB-Spiel</p>
-          <div class="match-teams">
-            <strong data-next-home>BVB</strong>
-            <span>vs</span>
-            <strong data-next-away>lädt...</strong>
+          <div class="hero-seal">
+            <img src="/assets/fanclub-logo.jpeg" alt="Vereinslogo der Bottwartal Borussen" width="120" height="120" />
+            <p data-content-key="hero_eyebrow">Offizieller BVB-Fanclub aus dem Bottwartal</p>
           </div>
-          <span class="match-competition" data-next-competition>Bundesliga-Spielplan wird geladen</span>
-          <dl>
-            <div>
-              <dt>Datum</dt>
-              <dd data-next-date>--</dd>
-            </div>
-            <div>
-              <dt>Anstoß</dt>
-              <dd data-next-time>--</dd>
-            </div>
-            <div>
-              <dt>Countdown</dt>
-              <dd data-next-countdown>--</dd>
-            </div>
-          </dl>
-          <small data-next-source>Quelle: OpenLigaDB</small>
-        </aside>
+          <section class="scoreboard-wrap" aria-label="Nächstes BVB-Spiel">
+            <div data-scoreboard></div>
+          </section>
         </div>
       </section>
 
-      <div class="club-strip" aria-label="Bottwartal Borussen">
+      <div class="chant" aria-hidden="true">
         <span>Im Bottwartal zuhause.</span>
         <span>Mit Borussia verbunden.</span>
       </div>
 
-      <div class="sitebuilder-sections" data-site-sections></div>
+      <div class="builder-sections" data-site-sections></div>
 
-      <section class="section fanclub" id="fanclub">
-        <div class="fanclub-simple reveal">
-          <figure>
-            <img src="/assets/fanclub-logo.jpeg" alt="Logo der Bottwartal Borussen" />
-          </figure>
-          <div>
-            <p class="eyebrow">Fanclub</p>
-            <h2 data-content-key="fanclub_title">Bottwartal Borussen</h2>
-            <p>
-              Wir sind ein kleiner offizieller BVB-Fanclub aus dem Bottwartal.
-              Hier erfährst du, was bei uns ansteht. Unsere internen Termine und
-              Fahrten findest du im Mitgliederbereich.
+      <section class="section section-paper" id="fanclub" aria-labelledby="fanclub-title">
+        <div class="fanclub">
+          <img class="fanclub-logo" src="/assets/fanclub-logo.jpeg" alt="" width="320" height="320" loading="lazy" />
+          <div class="fanclub-text">
+            <h2 id="fanclub-title" data-content-key="fanclub_title">Bottwartal Borussen</h2>
+            <p class="lead">
+              Wir sind ein kleiner offizieller BVB-Fanclub aus dem Bottwartal. Hier erfährst du, was bei uns
+              ansteht. Treffen und gemeinsame Fahrten planen wir im Mitgliederbereich.
             </p>
-            <div class="fact-list" aria-label="Fanclub Kurzinfos">
-              <span>Offizieller BVB-Fanclub</span>
-              <span>Bottwartal</span>
-              <span>BVB 09</span>
-            </div>
+            <dl class="facts">
+              <div>
+                <dt>Heimat</dt>
+                <dd>Bottwartal</dd>
+              </div>
+              <div>
+                <dt>Verein</dt>
+                <dd>Borussia Dortmund</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>Offizieller BVB-Fanclub</dd>
+              </div>
+            </dl>
           </div>
         </div>
       </section>
 
-      <section class="section schedule" id="termine">
-        <div class="section-title reveal">
+      <section class="section section-light" id="intern" aria-labelledby="intern-title">
+        <div class="split">
           <div>
-            <p class="eyebrow dark">Mitgliederbereich</p>
-            <h2>Was steht bei uns an?</h2>
-          </div>
-          <p>
-            Treffen und Fahrten planen wir im Mitgliederbereich.
-            Das nächste BVB-Spiel findest du oben auf dieser Seite.
-          </p>
-        </div>
-
-        <div class="member-gate reveal">
-          <div>
-            <span>Geschützter Bereich</span>
-            <strong>Treffen und Fahrten</strong>
-            <p>
-              Melde dich an, um unsere Termine und internen Fanclub-Infos zu sehen.
+            <h2 id="intern-title">Treffen und Fahrten planen wir intern.</h2>
+            <p class="lead muted">
+              Im Mitgliederbereich siehst du alle Termine, sagst mit einem Tipp zu und sprichst Mitfahrten ab.
             </p>
           </div>
-          <a class="button dark" href="/login.html">Zum Mitgliederlogin</a>
+          <div class="gate">
+            <ul class="gate-list">
+              <li>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.75" y="5.25" width="16.5" height="15" rx="2" /><path d="M3.75 9.75h16.5M8.25 3v4.5M15.75 3v4.5" /></svg>
+                <span><strong>Termine</strong> mit Zu- und Absage</span>
+              </li>
+              <li>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 16.5V12l1.8-4.2A2 2 0 0 1 8.14 6.5h7.72a2 2 0 0 1 1.84 1.3L19.5 12v4.5" /><path d="M3.75 16.5h16.5v2.25H3.75zM4.5 12h15" /><circle cx="7.5" cy="14.25" r=".75" /><circle cx="16.5" cy="14.25" r=".75" /></svg>
+                <span><strong>Mitfahrten</strong> direkt bei der Zusage</span>
+              </li>
+              <li>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.25" r="3.25" /><path d="M3 19.5c.6-3 3-4.75 6-4.75s5.4 1.75 6 4.75" /><path d="M15.75 5.25a3.25 3.25 0 0 1 0 6M18 14.9c1.6.6 2.7 2 3 4.6" /></svg>
+                <span><strong>Mitgliederliste</strong> und eigenes Profil</span>
+              </li>
+              <li>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.25" /><path d="m12 7.5 3.9 2.85-1.5 4.6H9.6l-1.5-4.6Z" /></svg>
+                <span><strong>Kicktipp</strong>-Tippspiel</span>
+              </li>
+            </ul>
+            <a class="button button-black" href="/login.html">Zum Mitgliederbereich</a>
+          </div>
         </div>
       </section>
 
-      <section class="section news-section" id="aktuelles">
-        <div class="section-title reveal">
-          <div>
-            <p class="eyebrow">Aktuelles</p>
-            <h2>Neues aus dem Fanclub.</h2>
+      <section class="section section-dark" id="aktuelles" aria-labelledby="news-title">
+        <div class="split split-top">
+          <h2 id="news-title">Neues aus dem Fanclub</h2>
+          <div class="news-list" data-news-list aria-live="polite">
+            <p class="news-empty">Meldungen werden geladen.</p>
           </div>
-          <p>
-            Hier findest du Meldungen und Hinweise von den Bottwartal Borussen.
-          </p>
-        </div>
-        <div class="news-grid" data-news-grid>
-          <p class="news-empty">Meldungen werden geladen.</p>
         </div>
       </section>
 
-      <section class="section join-section" id="mitglied">
-        <div class="join-panel reveal">
-          <p class="eyebrow dark">Mitglied werden</p>
-          <h2>Lust, dabei zu sein?</h2>
-          <p>
-            Du möchtest die Bottwartal Borussen kennenlernen oder Mitglied werden?
-            Schreib uns eine E-Mail. Wenn du schon ein Mitgliedskonto hast, kannst du dich direkt anmelden.
+      <section class="section section-yellow" id="mitglied" aria-labelledby="join-title">
+        <div class="join">
+          <h2 id="join-title" class="join-title">Lust, dabei zu sein?</h2>
+          <p class="lead">
+            Du möchtest die Bottwartal Borussen kennenlernen oder Mitglied werden? Schreib uns eine E-Mail.
+            Wenn du schon ein Mitgliedskonto hast, kannst du dich direkt anmelden.
           </p>
-          <div class="join-contact">
-            <span>Kontakt</span>
-            <a href="mailto:bottwartal.borussen09@web.de">bottwartal.borussen09@web.de</a>
-          </div>
-          <div class="hero-actions">
-            <a class="button dark" href="mailto:bottwartal.borussen09@web.de">Kontakt aufnehmen</a>
-            <a class="button ghost dark-ghost" href="/login.html">Mitgliederlogin</a>
+          <a class="join-mail" href="mailto:bottwartal.borussen09@web.de">bottwartal.borussen09@web.de</a>
+          <div class="actions">
+            <a class="button button-black" href="mailto:bottwartal.borussen09@web.de">E-Mail schreiben</a>
+            <a class="button button-outline" href="/login.html">Mitgliederlogin</a>
           </div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>© 2026 Bottwartal Borussen</span>
-      <nav aria-label="Footer">
+      <span>© 2026 Bottwartal Borussen · Kein offizielles Angebot der Borussia Dortmund GmbH &amp; Co. KGaA</span>
+      <nav aria-label="Rechtliches">
         <a href="/impressum.html">Impressum</a>
         <a href="/datenschutz.html">Datenschutz</a>
-        <a href="#main-content">Nach oben</a>
       </nav>
     </footer>
 
-    <script src="script.js"></script>
+    <script src="/scoreboard.js" defer></script>
+    <script src="/script.js" defer></script>
   </body>
 </html>
