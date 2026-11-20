@@ -853,65 +853,215 @@ const syncDisplayName = async (client, userId, displayName) => {
   });
 };
 
-// Nächstes BVB-Spiel serverseitig von OpenLigaDB holen und 10 Minuten zwischenspeichern.
+// Spielplan serverseitig von OpenLigaDB holen und zwischenspeichern.
 // So sieht OpenLigaDB nie die IP-Adressen der Besucher.
 const BVB_TEAM_ID = 7;
-const NEXT_MATCH_TTL_MS = 10 * 60 * 1000;
-let nextMatchCache = { at: 0, value: null };
+const SEASON_TTL_MS = 10 * 60 * 1000;
+const SEASON_LIVE_TTL_MS = 60 * 1000;
+const LIVE_WINDOW_MS = 2.5 * 60 * 60 * 1000;
+const COMPETITIONS = [
+  { key: "bl", shortcut: "bl1", name: "Bundesliga" },
+  { key: "pokal", shortcut: "dfb", name: "DFB-Pokal" },
+  { key: "cl", shortcut: "ucl", name: "Champions League" },
+];
+const seasonCache = new Map();
 
 const getBundesligaSeason = (date = new Date()) =>
   date.getMonth() >= 6 ? date.getFullYear() : date.getFullYear() - 1;
 
-const fetchSeason = async (season) => {
-  const response = await fetch(`https://api.openligadb.de/getmatchdata/bl1/${season}`, {
+const fetchOpenLiga = async (path) => {
+  const response = await fetch(`https://api.openligadb.de/${path}`, {
     signal: AbortSignal.timeout(8000),
     headers: { Accept: "application/json" },
   });
 
   if (!response.ok) {
-    throw new Error(`OpenLigaDB ${season}: ${response.status}`);
+    throw new Error(`OpenLigaDB ${path}: ${response.status}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
 };
 
-const loadNextMatch = async () => {
-  if (nextMatchCache.value && Date.now() - nextMatchCache.at < NEXT_MATCH_TTL_MS) {
-    return nextMatchCache.value;
-  }
+const cleanText = (value, max) => String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+const teamLabel = (team) => cleanText(team?.shortName || team?.teamName || "offen", 40);
+const toGoals = (value) => (Number.isInteger(value) && value >= 0 && value < 100 ? value : null);
 
-  const season = getBundesligaSeason();
-  const seasons = await Promise.allSettled([fetchSeason(season), fetchSeason(season + 1)]);
-  const matches = seasons.filter((result) => result.status === "fulfilled").flatMap((result) => result.value || []);
+// Endstand bzw. aktuellen Zwischenstand aus OpenLigaDB-Daten lesen.
+const readScore = (match) => {
+  const results = Array.isArray(match.matchResults) ? match.matchResults : [];
+  const final = [...results].sort((a, b) => (b.resultOrderID ?? 0) - (a.resultOrderID ?? 0))[0];
+  const goals = Array.isArray(match.goals) ? match.goals : [];
+  const lastGoal = goals[goals.length - 1];
+  const source = match.matchIsFinished ? final || lastGoal : lastGoal || final;
+  const home = toGoals(source?.pointsTeam1 ?? source?.scoreTeam1);
+  const away = toGoals(source?.pointsTeam2 ?? source?.scoreTeam2);
+  return home === null || away === null ? null : { home, away };
+};
 
-  if (!matches.length) {
+const normalizeMatch = (match, competition, now) => {
+  const kickoff = new Date(match.matchDateTimeUTC || match.matchDateTime).getTime();
+  if (!Number.isFinite(kickoff)) return null;
+
+  const bvbHome = match.team1?.teamId === BVB_TEAM_ID;
+  let score = readScore(match);
+  let status = "upcoming";
+
+  if (match.matchIsFinished) status = "finished";
+  else if (kickoff <= now && now - kickoff < LIVE_WINDOW_MS) status = "live";
+  else if (kickoff <= now) status = "pending";
+
+  if (status === "upcoming") score = null;
+  if (status === "live" && !score) score = { home: 0, away: 0 };
+
+  return {
+    id: Number(match.matchID) || 0,
+    competition: competition.key,
+    competitionName: competition.name,
+    round: cleanText(match.group?.groupName, 40).replace(/(\d+)\.\s*/, "$1. "),
+    kickoff: new Date(kickoff).toISOString(),
+    home: teamLabel(match.team1),
+    away: teamLabel(match.team2),
+    bvbHome,
+    venue: cleanText(match.location?.locationCity || match.location?.locationStadium, 60),
+    status,
+    score,
+  };
+};
+
+const loadSeason = async (season = getBundesligaSeason()) => {
+  const cached = seasonCache.get(season);
+  if (cached && Date.now() - cached.at < cached.ttl) return cached.value;
+
+  const [table, ...competitions] = await Promise.allSettled([
+    fetchOpenLiga(`getbltable/bl1/${season}`),
+    ...COMPETITIONS.map((competition) => fetchOpenLiga(`getmatchdata/${competition.shortcut}/${season}`)),
+  ]);
+
+  if (competitions.every((result) => result.status === "rejected")) {
     // Lieber einen etwas älteren Stand zeigen als gar keinen.
-    if (nextMatchCache.value) return nextMatchCache.value;
+    if (cached) return cached.value;
     throw new Error("Spielplan nicht erreichbar");
   }
 
   const now = Date.now();
-  const next = matches
-    .filter((match) => match.team1?.teamId === BVB_TEAM_ID || match.team2?.teamId === BVB_TEAM_ID)
-    .map((match) => ({ match, kickoff: new Date(match.matchDateTimeUTC || match.matchDateTime).getTime() }))
-    .filter(({ kickoff }) => Number.isFinite(kickoff) && kickoff > now - 2 * 60 * 60 * 1000)
-    .sort((a, b) => a.kickoff - b.kickoff)[0];
+  const matches = competitions
+    .flatMap((result, index) =>
+      result.status === "fulfilled"
+        ? result.value
+            .filter((match) => match.team1?.teamId === BVB_TEAM_ID || match.team2?.teamId === BVB_TEAM_ID)
+            .map((match) => normalizeMatch(match, COMPETITIONS[index], now))
+        : []
+    )
+    .filter(Boolean)
+    .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
 
-  const teamName = (team) => String(team?.shortName || team?.teamName || "offen").slice(0, 40);
+  const tableRows = table.status === "fulfilled" ? table.value : [];
+  const bvbIndex = tableRows.findIndex((row) => row.teamInfoId === BVB_TEAM_ID);
+  const bvbRow = tableRows[bvbIndex];
+  const standing =
+    bvbRow && Number(bvbRow.matches) > 0
+      ? {
+          position: bvbIndex + 1,
+          points: Number(bvbRow.points) || 0,
+          played: Number(bvbRow.matches) || 0,
+        }
+      : null;
+
+  const value = {
+    season: `${season}/${String(season + 1).slice(2)}`,
+    updatedAt: new Date(now).toISOString(),
+    incomplete: competitions.some((result) => result.status === "rejected"),
+    standing,
+    matches,
+  };
+
+  const hasLive = matches.some((match) => match.status === "live");
+  seasonCache.set(season, { at: now, ttl: hasLive ? SEASON_LIVE_TTL_MS : SEASON_TTL_MS, value });
+  return value;
+};
+
+// Nächstes Spiel über alle Wettbewerbe. Im Sommer ggf. schon die neue Saison.
+const loadNextMatch = async () => {
+  const season = getBundesligaSeason();
+  const pickNext = (data) =>
+    data.matches.find(
+      (match) => match.status === "upcoming" || match.status === "live"
+    );
+
+  let next = pickNext(await loadSeason(season));
+  if (!next) {
+    try {
+      next = pickNext(await loadSeason(season + 1));
+    } catch (error) {
+      next = null;
+    }
+  }
+
   const value = next
     ? {
-        home: teamName(next.match.team1),
-        away: teamName(next.match.team2),
-        bvbAtHome: next.match.team1?.teamId === BVB_TEAM_ID,
-        kickoff: new Date(next.kickoff).toISOString(),
-        competition: String(next.match.leagueName || "Bundesliga").slice(0, 80),
-        round: String(next.match.group?.groupName || "").slice(0, 40),
-        venue: String(next.match.location?.locationCity || next.match.location?.locationStadium || "").slice(0, 60),
+        home: next.home,
+        away: next.away,
+        bvbAtHome: next.bvbHome,
+        kickoff: next.kickoff,
+        competition: next.competitionName,
+        round: next.round,
+        venue: next.venue,
       }
     : null;
 
-  nextMatchCache = { at: Date.now(), value: { match: value } };
-  return nextMatchCache.value;
+  return { match: value };
+};
+
+// Kalenderdatei (RFC 5545) mit allen Spielen der Saison.
+const icsEscape = (value) => String(value).replace(/[\;,]/g, (char) => `\\${char}`).replace(/\r?\n/g, "\\n");
+const icsDate = (iso) => iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+const icsFold = (line) => {
+  const chunks = [];
+  let rest = line;
+  while (Buffer.byteLength(rest) > 73) {
+    let cut = 73;
+    while (Buffer.byteLength(rest.slice(0, cut)) > 73) cut -= 1;
+    chunks.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
+  }
+  chunks.push(rest);
+  return chunks.join("\r\n ");
+};
+
+const buildSeasonCalendar = (data) => {
+  const stamp = icsDate(data.updatedAt);
+  const events = data.matches.flatMap((match) => {
+    const start = icsDate(match.kickoff);
+    const end = icsDate(new Date(new Date(match.kickoff).getTime() + 2 * 60 * 60 * 1000).toISOString());
+    const result = match.score && match.status === "finished" ? ` ${match.score.home}:${match.score.away}` : "";
+    return [
+      "BEGIN:VEVENT",
+      `UID:openligadb-${match.id}@bottwartal-borussen`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${start}`,
+      `DTEND:${end}`,
+      `SUMMARY:${icsEscape(`${match.home} – ${match.away}${result}`)}`,
+      `DESCRIPTION:${icsEscape([match.competitionName, match.round].filter(Boolean).join(" · "))}`,
+      ...(match.venue ? [`LOCATION:${icsEscape(match.venue)}`] : []),
+      "END:VEVENT",
+    ];
+  });
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Bottwartal Borussen//Spielplan//DE",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${icsEscape(`BVB Spielplan ${data.season}`)}`,
+    "X-WR-TIMEZONE:Europe/Berlin",
+    ...events,
+    "END:VCALENDAR",
+    "",
+  ]
+    .map(icsFold)
+    .join("\r\n");
 };
 
 const requireMember = async (request, response) => {
@@ -1198,6 +1348,33 @@ const handleApi = async (request, response, pathname) => {
     return true;
   }
 
+  if (pathname === "/api/site/season" && request.method === "GET") {
+    try {
+      sendJson(response, 200, await loadSeason(), { "Cache-Control": "public, max-age=60" });
+    } catch (error) {
+      log("warn", "Spielplan nicht verfügbar", { error: error.message });
+      sendJson(response, 503, { error: "Spielplan gerade nicht erreichbar." });
+    }
+    return true;
+  }
+
+  if (pathname === "/api/site/season.ics" && request.method === "GET") {
+    try {
+      const data = await loadSeason();
+      response.writeHead(200, {
+        ...SECURITY_HEADERS,
+        "Content-Type": "text/calendar; charset=utf-8",
+        "Content-Disposition": `attachment; filename="bvb-spielplan-${data.season.replace("/", "-")}.ics"`,
+        "Cache-Control": "public, max-age=600",
+      });
+      response.end(buildSeasonCalendar(data));
+    } catch (error) {
+      log("warn", "Kalender nicht verfügbar", { error: error.message });
+      sendJson(response, 503, { error: "Spielplan gerade nicht erreichbar." });
+    }
+    return true;
+  }
+
   if (pathname === "/api/site/next-match" && request.method === "GET") {
     try {
       sendJson(response, 200, await loadNextMatch(), { "Cache-Control": "public, max-age=300" });
@@ -1344,8 +1521,10 @@ const PUBLIC_FILES = new Set([
   "/impressum.html",
   "/datenschutz.html",
   "/404.html",
+  "/spielplan.html",
   "/app.css",
   "/scoreboard.js",
+  "/spielplan.js",
   "/script.js",
   "/auth.js",
   "/members.js",
@@ -1360,7 +1539,7 @@ const serveStatic = async (request, response, pathname) => {
   let requestedPath;
 
   try {
-    requestedPath = path.posix.normalize(decodeURIComponent(pathname === "/" ? "/index.html" : pathname));
+    requestedPath = path.posix.normalize(decodeURIComponent(pathname === "/" ? "/index.html" : pathname === "/spielplan" ? "/spielplan.html" : pathname));
   } catch (error) {
     send(response, 400, "Bad request", { "Content-Type": "text/plain; charset=utf-8" });
     return;

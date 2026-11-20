@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Alle Spiele von Borussia Dortmund in Bundesliga, DFB-Pokal und Champions League – mit Ergebnissen, Anstoßzeiten und Kalender zum Abonnieren."
+    />
+    <meta name="theme-color" content="#ffe500" />
+    <meta property="og:title" content="Spielplan | Bottwartal Borussen" />
+    <meta property="og:description" content="Alle BVB-Spiele der Saison auf einen Blick." />
+    <meta property="og:image" content="/assets/fanclub-logo.jpeg" />
+    <link rel="icon" type="image/jpeg" href="/assets/fanclub-logo.jpeg" />
+    <link rel="apple-touch-icon" href="/assets/fanclub-logo.jpeg" />
+    <link rel="preload" href="/assets/fonts/anton.woff2" as="font" type="font/woff2" crossorigin />
+    <title>Spielplan | Bottwartal Borussen</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body class="page-season">
+    <a class="skip-link" href="#inhalt">Zum Inhalt</a>
+
+    <header class="site-header" data-header>
+      <a class="brand" href="/" aria-label="Bottwartal Borussen – Startseite">
+        <img src="/assets/fanclub-logo.jpeg" alt="" width="44" height="44" />
+        <span class="brand-text">
+          <strong>Bottwartal Borussen</strong>
+          <small>BVB-Fanclub</small>
+        </span>
+      </a>
+
+      <button
+        class="menu-button"
+        type="button"
+        data-menu-button
+        aria-label="Navigation öffnen"
+        aria-expanded="false"
+        aria-controls="hauptnavigation"
+      >
+        <span></span><span></span>
+      </button>
+
+      <nav id="hauptnavigation" class="site-nav" data-nav aria-label="Hauptnavigation">
+        <a href="/#fanclub">Fanclub</a>
+        <a href="/spielplan" aria-current="page">Spielplan</a>
+        <a href="/#aktuelles">Aktuelles</a>
+        <a href="/login.html" class="nav-login">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="icon">
+            <path d="M12 12.25a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z" />
+            <path d="M4.25 20.25c.74-3.45 3.75-5.75 7.75-5.75s7.01 2.3 7.75 5.75" />
+          </svg>
+          Login
+        </a>
+        <a class="button button-yellow nav-cta" href="/#mitglied">Mitglied werden</a>
+      </nav>
+    </header>
+
+    <main id="inhalt">
+      <section class="season-hero" aria-labelledby="season-title">
+        <div class="season-hero-copy">
+          <h1 id="season-title" class="hero-title">
+            <span class="hero-line"><span>Saison</span></span>
+            <span class="hero-line"><span data-season-label>26/27</span></span>
+          </h1>
+          <p class="hero-lead">
+            Jedes Spiel unserer Borussia in Bundesliga, DFB-Pokal und Champions League. Ergebnisse,
+            Anstoßzeiten und was als Nächstes ansteht.
+          </p>
+          <div class="actions">
+            <a class="button button-black" href="#naechstes" data-jump-next>
+              Zum nächsten Spiel
+            </a>
+            <a class="button button-outline" href="/api/site/season.ics" download>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.75" y="5.25" width="16.5" height="15" rx="2" /><path d="M3.75 9.75h16.5M8.25 3v4.5M15.75 3v4.5M12 12.75v4.5M9.75 15h4.5" /></svg>
+              In den Kalender
+            </a>
+          </div>
+        </div>
+
+        <aside class="tally" aria-label="Bilanz der Saison" data-tally>
+          <div class="tally-record">
+            <div><span class="tally-num" data-tally="w">–</span><span class="tally-label">Siege</span></div>
+            <div><span class="tally-num" data-tally="d">–</span><span class="tally-label">Remis</span></div>
+            <div><span class="tally-num" data-tally="l">–</span><span class="tally-label">Niederlagen</span></div>
+          </div>
+          <dl class="tally-facts">
+            <div><dt>Tore</dt><dd data-tally="goals">–</dd></div>
+            <div><dt>Bundesliga</dt><dd data-tally="standing">–</dd></div>
+          </dl>
+          <div class="tally-form">
+            <span class="tally-form-label">Letzte Spiele</span>
+            <ol class="form-row" data-tally="form"></ol>
+          </div>
+        </aside>
+      </section>
+
+      <section class="pulse" aria-labelledby="pulse-title">
+        <div class="pulse-head">
+          <h2 id="pulse-title">Saisonpuls</h2>
+          <p class="pulse-key">
+            Ein Balken pro Spiel. <span class="key key-w">Sieg nach oben</span>,
+            <span class="key key-l">Niederlage nach unten</span>, je höher, desto deutlicher.
+          </p>
+        </div>
+        <div class="pulse-scroll" data-pulse-scroll>
+          <ol class="pulse-track" data-pulse aria-label="Alle Spiele als Verlauf">
+          </ol>
+        </div>
+      </section>
+
+      <section class="fixtures" aria-labelledby="fixtures-title">
+        <h2 id="fixtures-title" class="visually-hidden">Alle Spiele</h2>
+
+        <div class="filterbar" data-filterbar>
+          <div class="chips" role="group" aria-label="Wettbewerb">
+            <button type="button" class="chip" data-filter-comp="all" aria-pressed="true">Alle <span data-count="all"></span></button>
+            <button type="button" class="chip" data-filter-comp="bl" aria-pressed="false">Bundesliga <span data-count="bl"></span></button>
+            <button type="button" class="chip" data-filter-comp="pokal" aria-pressed="false">DFB-Pokal <span data-count="pokal"></span></button>
+            <button type="button" class="chip" data-filter-comp="cl" aria-pressed="false">Champions League <span data-count="cl"></span></button>
+          </div>
+          <div class="chips chips-venue" role="group" aria-label="Spielort">
+            <button type="button" class="chip" data-filter-venue="all" aria-pressed="true">Alle Orte</button>
+            <button type="button" class="chip" data-filter-venue="home" aria-pressed="false">Heim</button>
+            <button type="button" class="chip" data-filter-venue="away" aria-pressed="false">Auswärts</button>
+          </div>
+        </div>
+
+        <p class="fixtures-note" data-fixtures-note hidden></p>
+        <div class="fixture-months" data-fixtures aria-live="polite">
+          <div class="fixture-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        </div>
+        <p class="fixtures-source">
+          Daten: <a href="https://www.openligadb.de" rel="noopener">OpenLigaDB</a>, ohne Gewähr. Anstoßzeiten in deutscher Zeit.
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>© 2026 Bottwartal Borussen · Kein offizielles Angebot der Borussia Dortmund GmbH &amp; Co. KGaA</span>
+      <nav aria-label="Rechtliches">
+        <a href="/impressum.html">Impressum</a>
+        <a href="/datenschutz.html">Datenschutz</a>
+      </nav>
+    </footer>
+
+    <script src="/spielplan.js" defer></script>
+  </body>
+</html>

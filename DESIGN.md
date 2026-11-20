@@ -155,6 +155,7 @@ Radien 8 (Buttons, Eingaben), 12 (Datumsmarke, Segmente, Listenzeilen), 16 (Pane
 - **Anzeigetafel** (`[data-scoreboard]`, `scoreboard.js`): Daten von `/api/site/next-match`; Zustände loading / ready / empty / error / live. Nur die geänderte Ziffer rollt (420ms, ease-out, Blur). Pausiert bei verstecktem Tab.
 - **Termin** (`.term`): gelbe Datumsmarke, „Heute/Morgen/In N Tagen“-Pill, Segment-Schalter Dabei/Vielleicht/Nein, optionaler Hinweis für Mitfahrten, Teilnahmebalken (Breiten per CSSOM wegen CSP), Personenliste mit Initialen-Avataren. Kompaktvariante auf der Spieltag-Ansicht.
 - **Fanclub-Ausweis** (`.member-card`): Kartenformat 1.586:1, Name in Anton gelb, gelbe Faktenleiste; neigt sich mit der Maus (nur ohne reduzierte Bewegung).
+- **Spielplan** (`/spielplan`, `spielplan.js`, Daten von `/api/site/season`, Kalender `/api/site/season.ics`): gelber Plakatkopf „Saison 26/27“ mit schwarzer Bilanz-Tafel (S/U/N, Tore, Tabellenplatz, Form als S/U/N-Kacheln); schwarzes Band **Saisonpuls** – ein Balken je Spiel, Sieg nach oben (Gelb), Niederlage nach unten (`no-text`), Höhe nach Tordifferenz, Remis als Strich, offene Spiele als Rahmen, gelbe „Jetzt“-Linie; darunter Monatsliste mit Ergebnis-Kacheln in der Zusage-Farbsprache, nächstes Spiel als schwarze Zeile. Filter (Wettbewerb, Heim/Auswärts) wirken auf Liste, Puls und Bilanz.
 - **Toast**: gelb, unten mittig (mobil über der Tab-Leiste), 2,8s.
 - **Formulare**: Labels über dem Feld, 50px Höhe, 16px Schrift (kein iOS-Zoom), gelber Fokusring, Fehlermeldung unter dem Formular.
 
