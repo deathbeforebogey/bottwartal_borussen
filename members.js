@@ -126,7 +126,7 @@ const showAlert = (message) => {
 
 // --- Ansichten (Hash-Navigation) --------------------------------------------------
 
-const VIEWS = ["spieltag", "termine", "mitglieder", "profil"];
+const VIEWS = ["spieltag", "termine", "spielplan", "mitglieder", "profil"];
 
 const showView = (moveFocus) => {
   const requested = window.location.hash.slice(1);

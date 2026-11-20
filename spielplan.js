@@ -6,6 +6,9 @@
   const TZ = "Europe/Berlin";
   const OUTCOME_LABEL = { w: "Sieg", d: "Remis", l: "Niederlage" };
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  // Auf der eigenen Seite gehören Titel und #Anker dem Spielplan; im Mitgliederbereich
+  // steuert der Anker die Ansicht und darf nicht überschrieben werden.
+  const standalone = document.body.classList.contains("page-season");
 
   const escapeHtml = (value = "") =>
     String(value ?? "")
@@ -308,7 +311,7 @@
     }
     row.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "center" });
     highlight(row);
-    history.replaceState(null, "", `#${id}`);
+    if (standalone) history.replaceState(null, "", `#${id}`);
   };
 
   document.addEventListener("click", (event) => {
@@ -333,7 +336,7 @@
     state.byId = new Map(data.matches.map((match) => [match.id, match]));
 
     els.seasonLabel.textContent = data.season.slice(2);
-    document.title = `Spielplan ${data.season} | Bottwartal Borussen`;
+    if (standalone) document.title = `Spielplan ${data.season} | Bottwartal Borussen`;
     els.jumpNext.hidden = !next;
 
     if (!data.matches.length) {

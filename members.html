@@ -33,6 +33,10 @@
           <span>Termine</span>
           <span class="tab-badge" data-open-badge hidden></span>
         </a>
+        <a href="#spielplan" data-view-link="spielplan">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.25 20.25V12M9.75 20.25V6.75M14.25 20.25v-6M18.75 20.25V3.75" /></svg>
+          <span>Spielplan</span>
+        </a>
         <a href="#mitglieder" data-view-link="mitglieder">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8.25" r="3.25" /><path d="M3 19.5c.6-3 3-4.75 6-4.75s5.4 1.75 6 4.75" /><path d="M15.75 5.25a3.25 3.25 0 0 1 0 6M18 14.9c1.6.6 2.7 2 3 4.6" /></svg>
           <span>Mitglieder</span>
@@ -62,7 +66,7 @@
         <div class="dash">
           <div class="dash-main">
             <div data-scoreboard></div>
-            <a class="text-link scoreboard-more" href="/spielplan">Ganzer Spielplan der Saison</a>
+            <a class="text-link scoreboard-more" href="#spielplan">Ganzer Spielplan der Saison</a>
 
             <section class="panel" aria-labelledby="next-term-title">
               <div class="panel-head">
@@ -104,6 +108,83 @@
         <div class="term-list" data-terms>
           <div class="skeleton skeleton-term"></div>
           <div class="skeleton skeleton-term"></div>
+        </div>
+      </section>
+
+      <!-- Spielplan -->
+      <section class="view" data-view="spielplan" aria-labelledby="season-view-title" hidden>
+        <div class="view-head">
+          <h1 id="season-view-title">Spielplan</h1>
+          <p class="muted">Alle Spiele unserer Borussia in Bundesliga, DFB-Pokal und Champions League.</p>
+        </div>
+
+        <div class="season-embed">
+          <section class="season-hero" aria-labelledby="season-title">
+            <div class="season-hero-copy">
+              <h2 id="season-title" class="hero-title">
+                <span class="hero-line"><span>Saison</span></span>
+                <span class="hero-line"><span data-season-label>26/27</span></span>
+              </h2>
+              <p class="hero-lead">Ergebnisse, Anstoßzeiten und was als Nächstes ansteht.</p>
+              <div class="actions">
+                <a class="button button-black" href="#naechstes" data-jump-next>Zum nächsten Spiel</a>
+                <a class="button button-outline" href="/api/site/season.ics" download>
+                  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.75" y="5.25" width="16.5" height="15" rx="2" /><path d="M3.75 9.75h16.5M8.25 3v4.5M15.75 3v4.5M12 12.75v4.5M9.75 15h4.5" /></svg>
+                  In den Kalender
+                </a>
+              </div>
+            </div>
+
+            <aside class="tally" aria-label="Bilanz der Saison" data-tally>
+              <div class="tally-record">
+                <div><span class="tally-num" data-tally="w">–</span><span class="tally-label">Siege</span></div>
+                <div><span class="tally-num" data-tally="d">–</span><span class="tally-label">Remis</span></div>
+                <div><span class="tally-num" data-tally="l">–</span><span class="tally-label">Niederlagen</span></div>
+              </div>
+              <dl class="tally-facts">
+                <div><dt>Tore</dt><dd data-tally="goals">–</dd></div>
+                <div><dt>Bundesliga</dt><dd data-tally="standing">–</dd></div>
+              </dl>
+              <div class="tally-form">
+                <span class="tally-form-label">Letzte Spiele</span>
+                <ol class="form-row" data-tally="form"></ol>
+              </div>
+            </aside>
+          </section>
+
+          <section class="pulse" aria-labelledby="pulse-title">
+            <div class="pulse-head">
+              <h2 id="pulse-title">Saisonpuls</h2>
+              <p class="pulse-key">
+                Ein Balken pro Spiel. <span class="key key-w">Sieg nach oben</span>,
+                <span class="key key-l">Niederlage nach unten</span>, je höher, desto deutlicher.
+              </p>
+            </div>
+            <div class="pulse-scroll" data-pulse-scroll>
+              <ol class="pulse-track" data-pulse aria-label="Alle Spiele als Verlauf"></ol>
+            </div>
+          </section>
+
+          <section class="fixtures" aria-labelledby="fixtures-title">
+            <h2 id="fixtures-title" class="visually-hidden">Alle Spiele</h2>
+            <div class="filterbar" data-filterbar>
+              <div class="chips" role="group" aria-label="Wettbewerb">
+                <button type="button" class="chip" data-filter-comp="all" aria-pressed="true">Alle <span data-count="all"></span></button>
+                <button type="button" class="chip" data-filter-comp="bl" aria-pressed="false">Bundesliga <span data-count="bl"></span></button>
+                <button type="button" class="chip" data-filter-comp="pokal" aria-pressed="false">DFB-Pokal <span data-count="pokal"></span></button>
+                <button type="button" class="chip" data-filter-comp="cl" aria-pressed="false">Champions League <span data-count="cl"></span></button>
+              </div>
+              <div class="chips chips-venue" role="group" aria-label="Spielort">
+                <button type="button" class="chip" data-filter-venue="all" aria-pressed="true">Alle Orte</button>
+                <button type="button" class="chip" data-filter-venue="home" aria-pressed="false">Heim</button>
+                <button type="button" class="chip" data-filter-venue="away" aria-pressed="false">Auswärts</button>
+              </div>
+            </div>
+            <p class="fixtures-note" data-fixtures-note hidden></p>
+            <div class="fixture-months" data-fixtures aria-live="polite">
+              <div class="fixture-skeleton" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -201,5 +282,6 @@
 
     <script src="/scoreboard.js" defer></script>
     <script src="/members.js" defer></script>
+    <script src="/spielplan.js" defer></script>
   </body>
 </html>

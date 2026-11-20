@@ -2489,7 +2489,7 @@ input[type="checkbox"] {
     bottom: 0;
     z-index: 40;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 0;
     margin: 0;
     padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
@@ -3540,4 +3540,169 @@ input[type="checkbox"] {
 .scoreboard-more {
   justify-self: start;
   margin-top: -6px;
+}
+
+/* --- Mitgliederbereich: Spielplan als eigene Ansicht ------------------------------ */
+
+.season-embed {
+  --gutter: clamp(20px, 3.2vw, 44px);
+  overflow: clip;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+}
+
+.season-embed .season-hero {
+  padding-block: 44px 52px;
+}
+
+.season-embed .hero-title {
+  font-size: clamp(3.4rem, 6.4vw, 6.5rem);
+}
+
+.season-embed .pulse {
+  padding-top: 48px;
+}
+
+.season-embed .fixtures {
+  padding-bottom: 56px;
+  /* Der Mitgliederbereich ist dunkel; die Spielliste steht auf Weiß. */
+  color: var(--on-light);
+}
+
+/* Neben der Seitenleiste ist weniger Platz als auf der eigenen Spielplan-Seite. */
+@media (max-width: 1279px) {
+  .season-embed .season-hero {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+/* Tablet: fünf Tabs plus Knöpfe passen nur ohne Clubnamen und Symbole in eine Zeile. */
+@media (min-width: 761px) and (max-width: 1023px) {
+  .page-app .app-header {
+    gap: 12px;
+  }
+
+  .page-app .app-header .brand-text {
+    display: none;
+  }
+
+  .page-app .app-tabs .icon {
+    display: none;
+  }
+}
+
+/* --- Mitgliederbereich: Desktop mit Seitenleiste ---------------------------------- */
+
+@media (min-width: 1024px) {
+  .page-app {
+    display: grid;
+    grid-template-columns: 252px minmax(0, 1fr);
+    align-items: start;
+    min-height: 100vh;
+    /* Spalte der Seitenleiste bis ganz nach unten schwarz, auch auf langen Seiten. */
+    background: linear-gradient(to right, var(--black) 251px, var(--line) 251px 252px, var(--ink) 252px);
+  }
+
+  .page-app .app-header {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 32px;
+    height: 100vh;
+    height: 100dvh;
+    padding: 24px 16px;
+    overflow-y: auto;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+  }
+
+  .page-app .app-header .brand {
+    padding: 0 8px;
+  }
+
+  .page-app .app-tabs {
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+  }
+
+  .page-app .app-tabs a {
+    gap: 12px;
+    min-height: 46px;
+    padding: 0 14px;
+  }
+
+  .page-app .tab-badge {
+    margin-left: auto;
+  }
+
+  .page-app .app-actions {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: auto;
+  }
+
+  .page-app .app-main {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    max-width: 1360px;
+    margin: 0;
+    padding: 48px clamp(32px, 4vw, 72px) 96px;
+  }
+
+  .page-app .view-head {
+    margin-bottom: 32px;
+  }
+
+  .page-app .view-head h1 {
+    font-size: 3.5rem;
+  }
+
+  .season-embed .filterbar {
+    top: 0;
+  }
+
+  .term {
+    scroll-margin-top: 32px;
+  }
+}
+
+/* Breite Bildschirme: Antwort links, wer kommt rechts daneben statt darunter. */
+@media (min-width: 1200px) {
+  .term:not(.term-compact) {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 28px;
+    padding: 28px;
+  }
+
+  .term:not(.term-compact) .term-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+    column-gap: 40px;
+    align-items: start;
+  }
+
+  .term:not(.term-compact) .term-body > * {
+    grid-column: 1;
+  }
+
+  .term:not(.term-compact) .attendance {
+    grid-column: 2;
+    grid-row: 1 / span 5;
+    max-width: none;
+    margin-top: 0;
+    padding-left: 32px;
+    border-left: 1px solid var(--line);
+  }
+
+  .term:not(.term-compact) .rsvp {
+    max-width: none;
+  }
+
+  .dash {
+    gap: 32px;
+  }
 }
