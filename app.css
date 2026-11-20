@@ -133,7 +133,7 @@ button {
 .section-yellow :focus-visible,
 .builder-highlight :focus-visible,
 .auth-wall :focus-visible,
-.page-404 :focus-visible {
+.page-404 .lost :focus-visible {
   outline-color: var(--black);
 }
 
@@ -1250,14 +1250,14 @@ input[type="checkbox"] {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 12px var(--gutter);
+  padding: 16px var(--gutter);
   border-bottom: 1px solid var(--line);
   background: var(--black);
 }
 
 .app-header .brand img {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
 }
 
 .app-tabs {
@@ -2272,10 +2272,6 @@ input[type="checkbox"] {
   background: var(--white);
 }
 
-.site-header-simple {
-  position: static;
-}
-
 .legal-main {
   max-width: 760px;
   margin: 0 auto;
@@ -2325,7 +2321,7 @@ input[type="checkbox"] {
   align-content: center;
   justify-items: start;
   gap: 20px;
-  min-height: 100svh;
+  min-height: calc(100svh - 72px);
   max-width: 900px;
   margin: 0 auto;
   padding: 48px 20px;
@@ -2479,6 +2475,7 @@ input[type="checkbox"] {
 @media (max-width: 760px) {
   .app-header {
     gap: 12px;
+    padding-block: 14px;
   }
 
   .app-header .brand-text small {
@@ -3058,7 +3055,7 @@ input[type="checkbox"] {
 
 .filterbar {
   position: sticky;
-  top: 72px;
+  top: 76px;
   z-index: 20;
   display: flex;
   flex-wrap: wrap;
@@ -3379,12 +3376,6 @@ input[type="checkbox"] {
   font-weight: 600;
 }
 
-.fixtures-source {
-  margin-top: 48px;
-  color: var(--on-light-muted);
-  font-size: 0.85rem;
-}
-
 @media (max-width: 920px) {
   .season-hero {
     grid-template-columns: 1fr;
@@ -3407,6 +3398,7 @@ input[type="checkbox"] {
   }
 
   .filterbar {
+    top: 72px;
     flex-wrap: nowrap;
     flex-direction: column;
     gap: 8px;

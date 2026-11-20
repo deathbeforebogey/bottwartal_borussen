@@ -1526,6 +1526,7 @@ const PUBLIC_FILES = new Set([
   "/scoreboard.js",
   "/spielplan.js",
   "/script.js",
+  "/nav.js",
   "/auth.js",
   "/members.js",
   "/admin.js",

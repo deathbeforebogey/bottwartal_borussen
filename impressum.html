@@ -9,15 +9,40 @@
     <link rel="stylesheet" href="/app.css" />
   </head>
   <body class="page-legal">
-    <header class="site-header site-header-simple">
-      <a class="brand" href="/">
+    <header class="site-header" data-header>
+      <a class="brand" href="/" aria-label="Bottwartal Borussen – Startseite">
         <img src="/assets/fanclub-logo.jpeg" alt="" width="44" height="44" />
         <span class="brand-text">
           <strong>Bottwartal Borussen</strong>
           <small>BVB-Fanclub</small>
         </span>
       </a>
-      <a class="button button-small button-ghost-dark" href="/">Zur Startseite</a>
+
+      <button
+        class="menu-button"
+        type="button"
+        data-menu-button
+        aria-label="Navigation öffnen"
+        aria-expanded="false"
+        aria-controls="hauptnavigation"
+      >
+        <span></span><span></span>
+      </button>
+
+      <nav id="hauptnavigation" class="site-nav" data-nav aria-label="Hauptnavigation">
+        <a href="/#fanclub">Fanclub</a>
+        <a href="/spielplan">Spielplan</a>
+        <a href="/#intern">Für Mitglieder</a>
+        <a href="/#aktuelles">Aktuelles</a>
+        <a href="/login.html" class="nav-login">
+          <svg viewBox="0 0 24 24" aria-hidden="true" class="icon">
+            <path d="M12 12.25a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5Z" />
+            <path d="M4.25 20.25c.74-3.45 3.75-5.75 7.75-5.75s7.01 2.3 7.75 5.75" />
+          </svg>
+          Login
+        </a>
+        <a class="button button-yellow nav-cta" href="/#mitglied">Mitglied werden</a>
+      </nav>
     </header>
 
     <main class="legal-main">
@@ -73,5 +98,6 @@
         <a href="/datenschutz.html">Datenschutz</a>
       </nav>
     </footer>
+    <script src="/nav.js" defer></script>
   </body>
 </html>
